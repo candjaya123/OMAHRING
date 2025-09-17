@@ -1,0 +1,42 @@
+services:
+  server:
+    build: ./server
+    container_name: server
+    ports:
+      - "5005:5005"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      - PORT=5005
+      - MONGO_URI=mongodb://mongo:27017/mydb
+      - CLIENT_URL=http://localhost:3000
+    depends_on:
+      - mongo
+    command: npm start
+
+  client:
+    build: ./client
+    container_name: client
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - VITE_BACKEND_URI=http://server:5005/api
+    depends_on:
+      - server
+    command: npm run dev -- --host 0.0.0.0
+
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

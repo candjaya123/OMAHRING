@@ -1,0 +1,17 @@
+FROM node:18-alpine
+
+# Set workdir
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy source
+COPY . .
+
+# Expose backend port
+EXPOSE 5005
+
+# Start server
+CMD ["npm", "start"]
