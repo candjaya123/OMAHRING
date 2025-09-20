@@ -3,7 +3,7 @@ services:
     build: ./server
     container_name: server
     ports:
-      - "5005:5005"
+      - '5005:5005'
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -13,18 +13,18 @@ services:
       - CLIENT_URL=http://localhost:3000
     depends_on:
       - mongo
-    command: npm start
+    command: npm run dev
 
   client:
     build: ./client
     container_name: client
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - ./client:/app
       - /app/node_modules
-    environment:
-      - VITE_BACKEND_URI=http://server:5005/api
+    # environment:
+    # - VITE_BACKEND_URI=http://server:5005/api //menggunakan env di client langsung
     depends_on:
       - server
     command: npm run dev -- --host 0.0.0.0
@@ -34,7 +34,7 @@ services:
     container_name: mongo
     restart: always
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo_data:/data/db
 

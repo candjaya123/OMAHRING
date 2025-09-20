@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Bird,
   Home,
@@ -12,61 +12,58 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ArrowRight,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchAllFilteredProducts,
-  fetchProductDetails,
-} from "@/store/shop/products-slice";
-import ShoppingProductTile from "@/components/shopping-view/product-tile";
-import { useNavigate } from "react-router-dom";
-import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
-import { useToast } from "@/components/ui/use-toast";
-import ProductDetailsDialog from "@/components/shopping-view/product-details";
-import { getFeatureImages } from "@/store/common-slice";
-import { motion } from "framer-motion";
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchAllFilteredProducts, fetchProductDetails } from '@/store/shop/products-slice';
+import ShoppingProductTile from '@/components/shopping-view/product-tile';
+import { useNavigate } from 'react-router-dom';
+import { addToCart, fetchCartItems } from '@/store/shop/cart-slice';
+import { useToast } from '@/components/ui/use-toast';
+import ProductDetailsDialog from '@/components/shopping-view/product-details';
+import { getFeatureImages } from '@/store/common-slice';
+import { motion } from 'framer-motion';
 
 // --- Data ---
 const categoriesWithIcon = [
-  { id: "Burung", label: "Burung", icon: Bird },
-  { id: "Kandang", label: "Kandang", icon: Home },
-  { id: "Pakan", label: "Pakan", icon: Wheat },
-  { id: "Ring-Burung", label: "Ring Burung", icon: Circle },
-  { id: "Aksesoris", label: "Aksesoris", icon: Sparkles },
+  { id: 'Burung', label: 'Burung', icon: Bird },
+  { id: 'Kandang', label: 'Kandang', icon: Home },
+  { id: 'Pakan', label: 'Pakan', icon: Wheat },
+  { id: 'Ring-Burung', label: 'Ring Burung', icon: Circle },
+  { id: 'Aksesoris', label: 'Aksesoris', icon: Sparkles },
 ];
 
 const brandsWithIcon = [
-  { id: "avian", label: "Avian", icon: Feather },
-  { id: "sangkarjaya", label: "Sangkar Jaya", icon: Home },
-  { id: "nutribird", label: "NutriBird", icon: Wheat },
-  { id: "birdcare", label: "BirdCare", icon: Heart },
-  { id: "flory", label: "Flory", icon: Flower },
-  { id: "avitron", label: "Avitron", icon: Sparkle },
+  { id: 'avian', label: 'Avian', icon: Feather },
+  { id: 'sangkarjaya', label: 'Sangkar Jaya', icon: Home },
+  { id: 'nutribird', label: 'NutriBird', icon: Wheat },
+  { id: 'birdcare', label: 'BirdCare', icon: Heart },
+  { id: 'flory', label: 'Flory', icon: Flower },
+  { id: 'avitron', label: 'Avitron', icon: Sparkle },
 ];
 
 const events = [
   {
-    id: "event1",
-    title: "Kontes Burung Kicau Nasional 2025",
-    date: "10 November 2025",
-    location: "Jakarta",
-    description: "Bergabunglah dengan kontes burung kicau terbesar di Indonesia!",
+    id: 'event1',
+    title: 'Kontes Burung Kicau Nasional 2025',
+    date: '10 November 2025',
+    location: 'Jakarta',
+    description: 'Bergabunglah dengan kontes burung kicau terbesar di Indonesia!',
   },
   {
-    id: "event2",
-    title: "Pameran Kandang Burung Inovatif",
-    date: "15 Desember 2025",
-    location: "Bandung",
-    description: "Lihat desain kandang terbaru dan teknologi perawatan burung.",
+    id: 'event2',
+    title: 'Pameran Kandang Burung Inovatif',
+    date: '15 Desember 2025',
+    location: 'Bandung',
+    description: 'Lihat desain kandang terbaru dan teknologi perawatan burung.',
   },
   {
-    id: "event3",
-    title: "Workshop Pakan Burung",
-    date: "20 Oktober 2025",
-    location: "Surabaya",
-    description: "Pelajari cara memilih pakan terbaik untuk burung Anda.",
+    id: 'event3',
+    title: 'Workshop Pakan Burung',
+    date: '20 Oktober 2025',
+    location: 'Surabaya',
+    description: 'Pelajari cara memilih pakan terbaik untuk burung Anda.',
   },
 ];
 
@@ -78,16 +75,14 @@ const sectionVariants = {
     y: 0,
     transition: {
       duration: 0.6,
-      ease: "easeOut",
+      ease: 'easeOut',
     },
   },
 };
 
 function ShoppingHome() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const { productList, productDetails } = useSelector(
-    (state) => state.shopProducts
-  );
+  const { productList, productDetails } = useSelector((state) => state.shopProducts);
   const { featureImageList } = useSelector((state) => state.commonFeature);
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const { user } = useSelector((state) => state.auth);
@@ -97,11 +92,11 @@ function ShoppingHome() {
 
   // --- Fungsi-fungsi ---
   function handleNavigateToListingPage(getCurrentItem, section) {
-    sessionStorage.removeItem("filters");
+    sessionStorage.removeItem('filters');
     const currentFilter = {
       [section]: [getCurrentItem.id],
     };
-    sessionStorage.setItem("filters", JSON.stringify(currentFilter));
+    sessionStorage.setItem('filters', JSON.stringify(currentFilter));
     navigate(`/shop/listing`);
   }
 
@@ -120,8 +115,8 @@ function ShoppingHome() {
       if (data?.payload?.success) {
         dispatch(fetchCartItems(user?.id));
         toast({
-          title: "Produk ditambahkan ke keranjang",
-          className: "bg-orange-500 text-white",
+          title: 'Produk ditambahkan ke keranjang',
+          className: 'bg-orange-500 text-white',
         });
       }
     });
@@ -140,7 +135,7 @@ function ShoppingHome() {
     dispatch(
       fetchAllFilteredProducts({
         filterParams: {},
-        sortParams: "price-lowtohigh",
+        sortParams: 'price-lowtohigh',
       })
     );
     dispatch(getFeatureImages());
@@ -167,12 +162,11 @@ function ShoppingHome() {
             Omahring - Ring Berkualitas untuk Sang Juara
           </h1>
           <p className="text-lg text-gray-200 max-w-2xl mx-auto mb-8 text-shadow-sm">
-            Temukan ring burung premium, pakan bernutrisi, dan aksesoris terbaik
-            yang dirancang untuk menunjang performa dan keindahan burung
-            kesayangan Anda.
+            Temukan ring burung premium, pakan bernutrisi, dan aksesoris terbaik yang dirancang
+            untuk menunjang performa dan keindahan burung kesayangan Anda.
           </p>
           <Button
-            onClick={() => handleNavigateToListingPage({ id: "Ring-Burung" }, "category")}
+            onClick={() => handleNavigateToListingPage({ id: 'Ring-Burung' }, 'category')}
             className="bg-orange-500 text-white hover:bg-orange-600 text-lg px-8 py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             Jelajahi Koleksi Ring <ArrowRight className="inline-block ml-2 w-5 h-5" />
@@ -187,7 +181,7 @@ function ShoppingHome() {
               src={slide?.image}
               key={index}
               className={`${
-                index === currentSlide ? "opacity-100" : "opacity-0"
+                index === currentSlide ? 'opacity-100' : 'opacity-0'
               } absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out`}
               alt={`Banner ${index + 1}`}
             />
@@ -202,9 +196,7 @@ function ShoppingHome() {
           size="icon"
           onClick={() =>
             setCurrentSlide(
-              (prevSlide) =>
-                (prevSlide - 1 + featureImageList.length) %
-                featureImageList.length
+              (prevSlide) => (prevSlide - 1 + featureImageList.length) % featureImageList.length
             )
           }
           className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white/90 hover:bg-orange-500 hover:text-white transition-colors duration-300"
@@ -215,11 +207,7 @@ function ShoppingHome() {
         <Button
           variant="outline"
           size="icon"
-          onClick={() =>
-            setCurrentSlide(
-              (prevSlide) => (prevSlide + 1) % featureImageList.length
-            )
-          }
+          onClick={() => setCurrentSlide((prevSlide) => (prevSlide + 1) % featureImageList.length)}
           className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-white/90 hover:bg-orange-500 hover:text-white transition-colors duration-300"
           aria-label="Slide berikutnya"
         >
@@ -240,27 +228,23 @@ function ShoppingHome() {
             Belanja Berdasarkan Kategori
           </h2>
           <p className="text-center text-gray-500 mb-16 max-w-xl mx-auto">
-            Temukan semua kebutuhan hobi Anda dengan mudah, mulai dari pakan
-            hingga aksesoris esensial.
+            Temukan semua kebutuhan hobi Anda dengan mudah, mulai dari pakan hingga aksesoris
+            esensial.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8">
             {categoriesWithIcon.map((categoryItem) => (
               <motion.div
                 key={categoryItem.id}
                 whileHover={{ y: -8 }}
-                transition={{ type: "spring", stiffness: 300 }}
+                transition={{ type: 'spring', stiffness: 300 }}
               >
                 <Card
-                  onClick={() =>
-                    handleNavigateToListingPage(categoryItem, "category")
-                  }
+                  onClick={() => handleNavigateToListingPage(categoryItem, 'category')}
                   className="cursor-pointer border border-gray-100 shadow-sm hover:shadow-xl transition-shadow duration-400 bg-white rounded-lg group"
                 >
                   <CardContent className="flex flex-col items-center justify-center p-8">
                     <categoryItem.icon className="w-12 h-12 mb-4 text-orange-500 transition-transform duration-400 group-hover:scale-110" />
-                    <span className="text-lg font-medium text-gray-700">
-                      {categoryItem.label}
-                    </span>
+                    <span className="text-lg font-medium text-gray-700">{categoryItem.label}</span>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -282,19 +266,20 @@ function ShoppingHome() {
             Produk Pilihan Kami
           </h2>
           <p className="text-center text-gray-500 mb-16 max-w-xl mx-auto">
-            Produk terlaris yang menjadi favorit para kicau mania di seluruh
-            Indonesia.
+            Produk terlaris yang menjadi favorit para kicau mania di seluruh Indonesia.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {productList && productList.length > 0 ? (
-              productList.slice(0, 4).map((productItem) => (
-                <ShoppingProductTile
-                  key={productItem.id}
-                  handleGetProductDetails={handleGetProductDetails}
-                  product={productItem}
-                  handleAddtoCart={handleAddtoCart}
-                />
-              ))
+              productList
+                .slice(0, 4)
+                .map((productItem) => (
+                  <ShoppingProductTile
+                    key={productItem.id}
+                    handleGetProductDetails={handleGetProductDetails}
+                    product={productItem}
+                    handleAddtoCart={handleAddtoCart}
+                  />
+                ))
             ) : (
               <p className="text-center text-gray-600 col-span-full text-lg">
                 Tidak ada produk tersedia
@@ -325,9 +310,7 @@ function ShoppingHome() {
                 className="border-none shadow-md hover:shadow-lg transition-all duration-300 bg-white hover:bg-orange-50 transform hover:-translate-y-1"
               >
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                    {event.title}
-                  </h3>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-3">{event.title}</h3>
                   <p className="text-sm text-orange-500 mb-2">
                     {event.date} | {event.location}
                   </p>
@@ -353,11 +336,11 @@ function ShoppingHome() {
               Jadi Bagian dari Komunitas Eksklusif Omahring
             </h2>
             <p className="text-lg text-gray-300 max-w-xl mx-auto mb-8">
-              Dapatkan akses prioritas ke produk terbaru, diskon khusus
-              anggota, dan undangan ke acara-acara komunitas pecinta burung.
+              Dapatkan akses prioritas ke produk terbaru, diskon khusus anggota, dan undangan ke
+              acara-acara komunitas pecinta burung.
             </p>
             <Button
-              onClick={() => navigate("/shop/membership")}
+              onClick={() => navigate('/shop/membership')}
               className="bg-orange-500 text-white hover:bg-orange-600 text-lg px-8 py-3 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-105"
             >
               Daftar Keanggotaan
