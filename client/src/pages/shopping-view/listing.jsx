@@ -9,10 +9,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/use-toast';
 import { sortOptions } from '@/config';
-import { addToCart, fetchCartItems } from '@/store/shop/cart-slice';
-import { fetchAllFilteredProducts, fetchProductDetails } from '@/store/shop/products-slice';
+import { fetchAllFilteredProducts } from '@/store/shop/products-slice';
 import { getFeatureImages } from '@/store/common-slice';
 import { ArrowUpDownIcon, ChevronLeftIcon, ChevronRightIcon, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -41,15 +39,12 @@ const sectionVariants = {
 function ShoppingListing() {
   const dispatch = useDispatch();
   const { productList, productDetails } = useSelector((state) => state.shopProducts);
-  const { cartItems } = useSelector((state) => state.shopCart);
   const { featureImageList } = useSelector((state) => state.commonFeature);
-  const { user } = useSelector((state) => state.auth);
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const categorySearchParam = searchParams.get('category');
@@ -76,43 +71,6 @@ function ShoppingListing() {
 
     setFilters(cpyFilters);
     sessionStorage.setItem('filters', JSON.stringify(cpyFilters));
-  }
-
-  function handleAddtoCart(getCurrentProductId, getTotalStock) {
-    let getCartItems = cartItems.items || [];
-
-    if (getCartItems.length) {
-      const indexOfCurrentItem = getCartItems.findIndex(
-        (item) => item.productId === getCurrentProductId
-      );
-      if (indexOfCurrentItem > -1) {
-        const getQuantity = getCartItems[indexOfCurrentItem].quantity;
-        if (getQuantity + 1 > getTotalStock) {
-          toast({
-            title: `Hanya ${getQuantity} item yang dapat ditambahkan untuk produk ini`,
-            variant: 'destructive',
-            className: 'bg-red-500 text-white',
-          });
-          return;
-        }
-      }
-    }
-
-    dispatch(
-      addToCart({
-        userId: user?.id,
-        productId: getCurrentProductId,
-        quantity: 1,
-      })
-    ).then((data) => {
-      if (data?.payload?.success) {
-        dispatch(fetchCartItems(user?.id));
-        toast({
-          title: 'Produk ditambahkan ke keranjang',
-          className: 'bg-orange-500 text-white',
-        });
-      }
-    });
   }
 
   useEffect(() => {
@@ -215,10 +173,10 @@ function ShoppingListing() {
                   className="w-[200px] bg-white border-gray-200 shadow-md"
                 >
                   <DropdownMenuRadioGroup value={sort} onValueChange={handleSort}>
-                    {sortOptions.map((sortItem) => (
+                    {sortOptions.map((sortItem, index) => (
                       <DropdownMenuRadioItem
                         value={sortItem.id}
-                        key={sortItem.id}
+                        key={index}
                         className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
                       >
                         {sortItem.label}
@@ -232,11 +190,7 @@ function ShoppingListing() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
             {productList && productList.length > 0 ? (
               productList.map((productItem) => (
-                <ShoppingProductTile
-                  key={productItem.id}
-                  product={productItem}
-                  handleAddtoCart={handleAddtoCart}
-                />
+                <ShoppingProductTile key={productItem._id} product={productItem} />
               ))
             ) : (
               <p className="col-span-full text-center text-gray-500">Tidak ada produk tersedia</p>

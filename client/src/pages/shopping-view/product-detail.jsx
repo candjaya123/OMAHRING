@@ -7,16 +7,77 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useToast } from '@/components/ui/use-toast';
+import { addToCart, fetchCartItems } from '@/store/shop/cart-slice';
 
 function ProductDetailPage() {
   const { productId } = useParams();
   const dispatch = useDispatch();
+  const { toast } = useToast();
 
-  const { currentProduct, isLoading, error } = useSelector((state) => state.adminProducts);
+  const {
+    currentProduct,
+    isLoading: productLoading,
+    error: productError,
+  } = useSelector((state) => state.adminProducts);
+  const { user } = useSelector((state) => state.auth);
 
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [rating, setRating] = useState(0);
   const [reviewMsg, setReviewMsg] = useState('');
+  const sessionId = localStorage.getItem('sessionId');
+
+  const handleAddToCart = async () => {
+    try {
+      const cartData = {
+        userId: user?.id || null,
+        sessionId: sessionId || null,
+        productId: currentProduct._id,
+        quantity: selectedQuantity,
+        variant: {
+          name: selectedVariant.name,
+          price: selectedVariant.price,
+          salePrice: selectedVariant.salePrice || 0,
+          totalStock: selectedVariant.totalStock,
+        },
+      };
+
+      const result = await dispatch(addToCart(cartData));
+
+      if (result.payload?.success) {
+        toast({
+          title: 'Produk berhasil ditambahkan ke keranjang!',
+        });
+        if (result.payload.data?.sessionId) {
+          localStorage.setItem('sessionId', result.payload.data.sessionId);
+        } else {
+          toast({
+            title: result.payload?.message || 'Gagal menambah ke keranjang',
+            variant: 'destructive',
+          });
+        }
+        dispatch(fetchCartItems(user?.id || sessionId));
+      }
+    } catch (error) {
+      toast({
+        title: error.message || 'Terjadi Kesalahan',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAddReview = () => {
+    if (rating > 0 && reviewMsg.trim()) {
+      console.log('Adding review:', {
+        productId: currentProduct._id,
+        rating,
+        message: reviewMsg,
+      });
+      setRating(0);
+      setReviewMsg('');
+    }
+  };
 
   useEffect(() => {
     if (productId) {
@@ -34,7 +95,7 @@ function ProductDetailPage() {
     }
   }, [currentProduct]);
 
-  if (isLoading) {
+  if (productLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
@@ -45,11 +106,11 @@ function ProductDetailPage() {
     );
   }
 
-  if (error) {
+  if (productError) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
-          <p className="text-red-600 text-lg">Error: {error}</p>
+          <p className="text-red-600 text-lg">Error: {productError}</p>
           <Button onClick={() => dispatch(fetchProductById(productId))} className="mt-4">
             Coba Lagi
           </Button>
@@ -68,48 +129,23 @@ function ProductDetailPage() {
     );
   }
 
-  const handleAddToCart = () => {
-    if (selectedVariant) {
-      console.log('Adding to cart:', {
-        product: currentProduct,
-        variant: selectedVariant,
-      });
-    }
-  };
-
-  const handleAddReview = () => {
-    if (rating > 0 && reviewMsg.trim()) {
-      console.log('Adding review:', {
-        productId: currentProduct._id,
-        rating,
-        message: reviewMsg,
-      });
-      setRating(0);
-      setReviewMsg('');
-    }
-  };
-
-  // Destructure untuk readability
-  const { title, description, category, image, variants = [], averageReview = 0 } = currentProduct;
-  const reviews = []; // Replace dengan data reviews yang sebenarnya
+  const { title, description, category, image, variants = [] } = currentProduct;
+  const reviews = [];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-        {/* Kolom Gambar */}
-        <div className="relative overflow-hidden rounded-lg aspect-square">
+    <div className="max-w-screen-xl mx-auto px-5 sm:px-10 xl:px-0 pt-10">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
+        <div className="md:col-span-6 xl:col-span-4 overflow-hidden rounded-lg aspect-square max-h-96">
           <img src={image} alt={title} className="w-full h-full object-cover" />
         </div>
 
-        {/* Kolom Detail Produk */}
-        <div className="flex flex-col space-y-4">
+        <div className="md:col-span-6 xl:col-span-7 flex flex-col space-y-4">
           <div>
             <p className="text-sm text-gray-500">{category}</p>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{title}</h1>
             <p className="text-gray-600 text-base mt-2">{description}</p>
           </div>
 
-          {/* Pemilihan Varian */}
           {variants.length > 0 && (
             <div className="pt-2 md:pt-4">
               <Label className="font-semibold text-gray-800">Pilih Varian:</Label>
@@ -136,7 +172,6 @@ function ProductDetailPage() {
             </div>
           )}
 
-          {/* Tampilan Harga & Stok */}
           {selectedVariant && (
             <div className="pt-2">
               <div className="flex items-baseline gap-3">
@@ -159,25 +194,37 @@ function ProductDetailPage() {
             </div>
           )}
 
-          {/* Rating */}
           <div className="flex items-center gap-2">
-            {/* Replace dengan StarRatingComponent jika ada */}
-            <div className="flex">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  className={`text-lg ${
-                    star <= averageReview ? 'text-yellow-400' : 'text-gray-300'
-                  }`}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
-            <span className="text-gray-500 text-sm">({averageReview.toFixed(1)})</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setSelectedQuantity((prev) => Math.max(1, prev - 1))}
+              disabled={selectedQuantity <= 1}
+              aria-label="Kurangi jumlah"
+            >
+              -
+            </Button>
+            <span className="px-3">{selectedQuantity}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() =>
+                setSelectedQuantity((prev) =>
+                  selectedVariant ? Math.min(selectedVariant.totalStock, prev + 1) : prev + 1
+                )
+              }
+              disabled={
+                !selectedVariant ||
+                selectedQuantity >= (selectedVariant ? selectedVariant.totalStock : 1)
+              }
+              aria-label="Tambah jumlah"
+            >
+              +
+            </Button>
           </div>
 
-          {/* Tombol Aksi */}
           <div className="pt-2 md:pt-4">
             <Button
               className="w-full bg-orange-500 hover:bg-orange-600 text-base md:text-lg py-5 md:py-6"
@@ -192,7 +239,6 @@ function ProductDetailPage() {
 
           <Separator className="my-2 md:my-4" />
 
-          {/* Bagian Ulasan */}
           <div className="flex-grow overflow-y-auto max-h-[200px] pr-2 space-y-4">
             <h2 className="text-xl font-bold text-gray-800">Ulasan Pelanggan</h2>
             {reviews && reviews.length > 0 ? (
@@ -203,7 +249,6 @@ function ProductDetailPage() {
                   </Avatar>
                   <div>
                     <h3 className="font-bold text-gray-900">{review.userName}</h3>
-                    {/* StarRatingComponent placeholder */}
                     <div className="flex">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <span
@@ -225,11 +270,9 @@ function ProductDetailPage() {
             )}
           </div>
 
-          {/* Form Tambah Ulasan */}
           <div className="flex flex-col gap-2 pt-4 border-t">
             <Label className="font-semibold text-gray-800">Tulis Ulasan Anda</Label>
 
-            {/* Simple rating input */}
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button

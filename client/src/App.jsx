@@ -29,10 +29,26 @@ import AdminReportsView from './pages/admin-view/reports'; // 🔹 1. Impor hala
 import AdminManagementView from './pages/admin-view/manage-admins'; // 🔹 1. Impor halaman baru
 import AuthedGuard from './components/guards/authed-guard';
 import ProductDetailPage from './pages/shopping-view/product-detail';
+import { v4 as uuidv4 } from 'uuid';
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+
+  const getOrSetSessionId = () => {
+    let sessionId = localStorage.getItem('sessionId');
+    if (!sessionId) {
+      sessionId = `guest-${uuidv4()}`;
+      localStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+  };
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && user === null) {
+      getOrSetSessionId();
+    }
+  }, [isLoading, isAuthenticated, user]);
 
   useEffect(() => {
     dispatch(checkAuth());

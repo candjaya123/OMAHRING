@@ -1,5 +1,5 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import api from "../../../utils/axios";;
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import api from '../../../utils/axios';
 
 const initialState = {
   isLoading: false,
@@ -8,38 +8,27 @@ const initialState = {
 };
 
 export const fetchAllFilteredProducts = createAsyncThunk(
-  "/products/fetchAllProducts",
+  '/products/fetchAllProducts',
   async ({ filterParams, sortParams }) => {
-    console.log(fetchAllFilteredProducts, "fetchAllFilteredProducts");
-
     const query = new URLSearchParams({
       ...filterParams,
       sortBy: sortParams,
     });
 
-    const result = await api.get(
-      `/shop/products/get?${query}`
-    );
-
-    console.log(result);
+    const result = await api.get(`/shop/products/get?${query}`);
 
     return result?.data;
   }
 );
 
-export const fetchProductDetails = createAsyncThunk(
-  "/products/fetchProductDetails",
-  async (id) => {
-    const result = await api.get(
-      `/shop/products/get/${id}`
-    );
+export const fetchProductDetails = createAsyncThunk('/products/fetchProductDetails', async (id) => {
+  const result = await api.get(`/shop/products/get/${id}`);
 
-    return result?.data;
-  }
-);
+  return result?.data;
+});
 
 const shoppingProductSlice = createSlice({
-  name: "shoppingProducts",
+  name: 'shoppingProducts',
   initialState,
   reducers: {
     setProductDetails: (state) => {

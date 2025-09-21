@@ -17,6 +17,7 @@ import { logoutUser } from '@/store/auth-slice';
 import UserCartWrapper from './cart-wrapper';
 import { useEffect, useState } from 'react';
 import { fetchCartItems } from '@/store/shop/cart-slice';
+import { v4 as uuidv4 } from 'uuid';
 
 function MenuItems() {
   const navigate = useNavigate();
@@ -98,22 +99,27 @@ function MenuItems() {
 }
 
 function HeaderRightContent() {
-  const { user } = useSelector((state) => state.auth);
+  // const { user } = useSelector((state) => state.auth);
   const { cartItems } = useSelector((state) => state.shopCart);
   const [openCartSheet, setOpenCartSheet] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const sessionId = localStorage.getItem('sessionId');
+  const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
 
   function handleLogout() {
     dispatch(logoutUser());
+    let sessionId = localStorage.getItem('sessionId');
+    if (!sessionId) {
+      sessionId = `guest-${uuidv4()}`;
+      localStorage.setItem('sessionId', sessionId);
+    }
     navigate('/shop/home');
   }
 
   useEffect(() => {
-    if (user?.id) {
-      dispatch(fetchCartItems(user.id));
-    }
-  }, [dispatch, user?.id]);
+    dispatch(fetchCartItems(user?.id || sessionId));
+  }, [dispatch, user?.id, sessionId]);
 
   return (
     <div className="flex lg:items-center lg:flex-row flex-col gap-6">

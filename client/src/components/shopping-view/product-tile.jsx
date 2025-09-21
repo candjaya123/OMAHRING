@@ -8,10 +8,7 @@ function ShoppingProductTile({ product }) {
   const displayVariant =
     product?.variants && product.variants.length > 0 ? product.variants[0] : null;
   const navigate = useNavigate();
-  // Memeriksa apakah ada varian yang sedang diskon
   const isProductOnSale = product?.variants?.some((v) => v.salePrice > 0);
-
-  // Memeriksa apakah semua varian sudah habis stoknya
   const isOutOfStock = product?.variants?.every((v) => v.totalStock === 0);
 
   return (
