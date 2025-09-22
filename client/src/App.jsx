@@ -108,8 +108,8 @@ function App() {
           <Route path="blog" element={<BlogPage />} />
           <Route path="membership" element={<MembershipPage />} />
           <Route path="product/:productId" element={<ProductDetailPage />} />
+          <Route path="checkout" element={<ShoppingCheckout />} />
           <Route element={<AuthedGuard />}>
-            <Route path="checkout" element={<ShoppingCheckout />} />
             <Route path="payment-success" element={<PaymentSuccessPage />} />
             <Route path="account" element={<ShoppingAccount />} />
           </Route>

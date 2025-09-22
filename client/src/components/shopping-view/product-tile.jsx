@@ -8,9 +8,8 @@ function ShoppingProductTile({ product }) {
   const displayVariant =
     product?.variants && product.variants.length > 0 ? product.variants[0] : null;
   const navigate = useNavigate();
-  const isProductOnSale = product?.variants?.some((v) => v.salePrice > 0);
-  const isOutOfStock = product?.variants?.every((v) => v.totalStock === 0);
-
+  const isProductOnSale = product?.variants?.some((v) => v.salePrice > 0) ?? false;
+  const isOutOfStock = product?.variants?.every((v) => v.totalStock === 0) ?? true;
   return (
     <Card className="w-full max-w-sm mx-auto flex flex-col overflow-hidden rounded-xl border shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer">
       <div onClick={() => navigate(`/shop/product/${product._id}`)}>

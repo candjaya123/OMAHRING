@@ -1,5 +1,5 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import api from "../../../utils/axios";;
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import api from '../../../utils/axios';
 
 // =============================
 // INITIAL STATE (GABUNGAN)
@@ -7,13 +7,13 @@ import api from "../../../utils/axios";;
 const initialState = {
   isLoading: false,
   error: null,
-  
+
   // State untuk alur belanja (Shop)
   token: null, // Untuk Midtrans Snap
   redirectUrl: null,
   orderId: null, // ID pesanan yang baru dibuat
   userOrderList: [], // Daftar pesanan untuk satu pengguna
-  
+
   // State untuk panel admin
   adminOrderList: [], // Daftar semua pesanan untuk admin
   orderDetails: null, // Detail pesanan yang sedang dilihat (digunakan bersama)
@@ -34,39 +34,37 @@ const initialState = {
 // =================================================================
 
 export const createNewOrder = createAsyncThunk(
-  "orders/createNew",
+  'orders/createNew',
   async (orderData, { rejectWithValue }) => {
     try {
-      const response = await api.post("/shop/order/create", orderData);
+      const response = await api.post('/shop/order/create', orderData);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Gagal membuat pesanan");
+      return rejectWithValue(err.response?.data || 'Gagal membuat pesanan');
     }
   }
 );
 
 export const getAllOrdersByUserId = createAsyncThunk(
-  "orders/fetchAllByUser",
+  'orders/fetchAllByUser',
   async (userId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/shop/order/list/${userId}`);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Gagal mengambil riwayat pesanan");
+      return rejectWithValue(err.response?.data || 'Gagal mengambil riwayat pesanan');
     }
   }
 );
 
 export const verifyPaymentStatus = createAsyncThunk(
-  "orders/verifyPaymentStatus",
+  'orders/verifyPaymentStatus',
   async (orderId, { rejectWithValue }) => {
     try {
-      const response = await api.get(
-        `/shop/order/details/${orderId}`
-      );
+      const response = await api.get(`/shop/order/details/${orderId}`);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Gagal memverifikasi pembayaran");
+      return rejectWithValue(err.response?.data || 'Gagal memverifikasi pembayaran');
     }
   }
 );
@@ -76,39 +74,39 @@ export const verifyPaymentStatus = createAsyncThunk(
 // =================================================================
 
 export const getAllOrdersForAdmin = createAsyncThunk(
-  "orders/fetchAllForAdmin",
-  async ({ page = 1, limit = 10, status = "" }, { rejectWithValue }) => {
+  'orders/fetchAllForAdmin',
+  async ({ page = 1, limit = 10, status = '' }, { rejectWithValue }) => {
     try {
-      const response = await api.get("/admin/orders/get", {
-        params: { page, limit, status }
+      const response = await api.get('/admin/orders/get', {
+        params: { page, limit, status },
       });
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Gagal mengambil pesanan admin");
+      return rejectWithValue(err.response?.data || 'Gagal mengambil pesanan admin');
     }
   }
 );
 
 export const updateOrderStatus = createAsyncThunk(
-  "orders/updateStatus",
+  'orders/updateStatus',
   async ({ id, orderStatus }, { rejectWithValue }) => {
     try {
       const response = await api.put(`/admin/orders/update/${id}`, { orderStatus });
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Gagal memperbarui status");
+      return rejectWithValue(err.response?.data || 'Gagal memperbarui status');
     }
   }
 );
 
 export const fetchOrderStats = createAsyncThunk(
-  "orders/fetchStats",
+  'orders/fetchStats',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get("/admin/orders/stats");
+      const response = await api.get('/admin/orders/stats');
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Gagal mengambil statistik");
+      return rejectWithValue(err.response?.data || 'Gagal mengambil statistik');
     }
   }
 );
@@ -118,16 +116,16 @@ export const fetchOrderStats = createAsyncThunk(
 // =================================================================
 
 export const getOrderDetails = createAsyncThunk(
-  "orders/fetchDetails",
+  'orders/fetchDetails',
   async ({ id, isAdmin = false }, { rejectWithValue }) => {
     try {
-      const url = isAdmin 
-        ? `/admin/orders/details/${id}`
-        : `/shop/order/details/${id}`;
+      console.log(id);
+
+      const url = isAdmin ? `/admin/orders/details/${id}` : `/shop/order/details/${id}`;
       const response = await api.get(url);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Gagal mengambil detail pesanan");
+      return rejectWithValue(err.response?.data || 'Gagal mengambil detail pesanan');
     }
   }
 );
@@ -136,7 +134,7 @@ export const getOrderDetails = createAsyncThunk(
 // SLICE
 // =============================
 const orderSlice = createSlice({
-  name: "orders",
+  name: 'orders',
   initialState,
   reducers: {
     resetOrderState: (state) => {
@@ -159,7 +157,7 @@ const orderSlice = createSlice({
         state.token = action.payload.token;
         state.redirectUrl = action.payload.redirect_url;
         state.orderId = action.payload.orderId;
-        sessionStorage.setItem("currentOrderId", action.payload.orderId);
+        sessionStorage.setItem('currentOrderId', action.payload.orderId);
       })
       // GET ORDERS BY USER (SHOP)
       .addCase(getAllOrdersByUserId.fulfilled, (state, action) => {
@@ -190,7 +188,7 @@ const orderSlice = createSlice({
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
         state.isLoading = false;
         const updatedOrder = action.payload.data;
-        const index = state.adminOrderList.findIndex(order => order._id === updatedOrder._id);
+        const index = state.adminOrderList.findIndex((order) => order._id === updatedOrder._id);
         if (index !== -1) {
           state.adminOrderList[index] = updatedOrder;
         }
@@ -205,14 +203,14 @@ const orderSlice = createSlice({
       // 🔹 SEMUA .addMatcher DITEMPATKAN DI BAWAH 🔹
       // Kasus umum untuk pending dan rejected
       .addMatcher(
-        (action) => action.type.startsWith("orders/") && action.type.endsWith("/pending"),
+        (action) => action.type.startsWith('orders/') && action.type.endsWith('/pending'),
         (state) => {
           state.isLoading = true;
           state.error = null;
         }
       )
       .addMatcher(
-        (action) => action.type.startsWith("orders/") && action.type.endsWith("/rejected"),
+        (action) => action.type.startsWith('orders/') && action.type.endsWith('/rejected'),
         (state, action) => {
           state.isLoading = false;
           state.error = action.payload;

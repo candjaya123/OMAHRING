@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { Home, Wheat, Sparkles, Bird, Circle } from 'lucide-react';
 
 const categoriesWithIcon = [
-  { id: 'Burung', label: 'Burung', icon: Bird },
-  { id: 'Kandang', label: 'Kandang', icon: Home },
-  { id: 'Pakan', label: 'Pakan', icon: Wheat },
-  { id: 'Ring-Burung', label: 'Ring Burung', icon: Circle },
-  { id: 'Aksesoris', label: 'Aksesoris', icon: Sparkles },
+  { id: 'burung', label: 'Burung', icon: Bird },
+  { id: 'kandang', label: 'Kandang', icon: Home },
+  { id: 'pakan', label: 'Pakan', icon: Wheat },
+  { id: 'ring-burung', label: 'Ring Burung', icon: Circle },
+  { id: 'aksesoris', label: 'Aksesoris', icon: Sparkles },
 ];
 
 const sectionVariants = {

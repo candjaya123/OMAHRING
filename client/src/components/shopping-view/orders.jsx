@@ -1,32 +1,23 @@
-import { useEffect, useState } from "react";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Dialog } from "../ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
-import ShoppingOrderDetailsView from "./order-details";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  getAllOrdersByUserId,
-  getOrderDetails,
-  resetOrderDetails,
-} from "@/store/shop/order-slice";
-import { Badge } from "../ui/badge";
+import { useEffect, useState } from 'react';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Dialog } from '../ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import ShoppingOrderDetailsView from './order-details';
+import { useDispatch, useSelector } from 'react-redux';
+import { getAllOrdersByUserId, getOrderDetails, resetOrderDetails } from '@/store/shop/order-slice';
+import { Badge } from '../ui/badge';
 
 function ShoppingOrders() {
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const { orderList, orderDetails } = useSelector((state) => state.shopOrder);
+  const { userOrderList, orderDetails } = useSelector((state) => state.shopOrder);
 
   function handleFetchOrderDetails(getId) {
-    dispatch(getOrderDetails(getId));
+    console.log('id', getId);
+
+    dispatch(getOrderDetails({ id: getId, isAdmin: false }));
   }
 
   useEffect(() => {
@@ -36,8 +27,6 @@ function ShoppingOrders() {
   useEffect(() => {
     if (orderDetails !== null) setOpenDetailsDialog(true);
   }, [orderDetails]);
-
-  console.log(orderDetails, "orderDetails");
 
   return (
     <Card>
@@ -58,19 +47,19 @@ function ShoppingOrders() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orderList && orderList.length > 0
-              ? orderList.map((orderItem) => (
-                  <TableRow>
+            {userOrderList && userOrderList.length > 0
+              ? userOrderList.map((orderItem) => (
+                  <TableRow key={orderItem?._id}>
                     <TableCell>{orderItem?._id}</TableCell>
-                    <TableCell>{orderItem?.orderDate.split("T")[0]}</TableCell>
+                    <TableCell>{orderItem?.orderDate.split('T')[0]}</TableCell>
                     <TableCell>
                       <Badge
                         className={`py-1 px-3 ${
-                          orderItem?.orderStatus === "confirmed"
-                            ? "bg-green-500"
-                            : orderItem?.orderStatus === "rejected"
-                            ? "bg-red-600"
-                            : "bg-black"
+                          orderItem?.orderStatus === 'confirmed'
+                            ? 'bg-green-500'
+                            : orderItem?.orderStatus === 'rejected'
+                            ? 'bg-red-600'
+                            : 'bg-black'
                         }`}
                       >
                         {orderItem?.orderStatus}
@@ -82,14 +71,12 @@ function ShoppingOrders() {
                         open={openDetailsDialog}
                         onOpenChange={() => {
                           setOpenDetailsDialog(false);
+                          console.log(openDetailsDialog);
+
                           dispatch(resetOrderDetails());
                         }}
                       >
-                        <Button
-                          onClick={() =>
-                            handleFetchOrderDetails(orderItem?._id)
-                          }
-                        >
+                        <Button onClick={() => handleFetchOrderDetails(orderItem?._id)}>
                           View Details
                         </Button>
                         <ShoppingOrderDetailsView orderDetails={orderDetails} />
