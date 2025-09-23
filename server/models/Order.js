@@ -1,120 +1,75 @@
-// models/Order.js
 const mongoose = require('mongoose');
+const { Schema, model, Types } = mongoose;
 
-const OrderSchema = new mongoose.Schema(
+const OrderItemSchema = new Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    customerName: {
-      type: String,
-      required: true,
-    },
-    cartId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Cart',
-      required: true,
-    },
-    cartItems: [
-      {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Product',
-          required: true,
-        },
-        title: {
-          type: String,
-          required: true,
-        },
-        image: {
-          type: String,
-          required: true,
-        },
-        price: {
-          type: Number,
-          required: true,
-        },
-        quantity: {
-          type: Number,
-          required: true,
-          min: 1,
-        },
-        variantName: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
-    addressInfo: {
-      address: {
-        type: String,
-        required: true,
-      },
-      city: {
-        type: String,
-        required: true,
-      },
-      pincode: {
-        type: String,
-        required: true,
-      },
-      phone: {
-        type: String,
-        required: true,
-      },
-      notes: {
-        type: String,
-        default: '',
-      },
-    },
+    productId: { type: Types.ObjectId, ref: 'Product', required: true },
+    title: { type: String, required: true },
+    image: { type: String },
+    price: { type: Number, required: true }, // integer Rupiah
+    quantity: { type: Number, required: true, min: 1 },
+    variantName: { type: String, required: true }, // cocok dgn Product.variants[].name
+  },
+  { _id: false }
+);
+
+const AddressInfoSchema = new Schema(
+  {
+    address: String,
+    city: String,
+    pincode: String, // kompatibel dgn body kamu
+    phone: String,
+    notes: String,
+  },
+  { _id: false }
+);
+
+const MidtransSchema = new Schema(
+  {
+    orderId: String, // sama dgn _id toString()
+    transactionId: String,
+    transactionStatus: String,
+    fraudStatus: String,
+    paymentType: String,
+    statusCode: String,
+    grossAmount: String, // simpan apa adanya dari Midtrans (string)
+    signatureKey: String,
+    rawNotification: Schema.Types.Mixed,
+  },
+  { _id: false }
+);
+
+const OrderSchema = new Schema(
+  {
+    userId: { type: Types.ObjectId, ref: 'User', required: true, index: true },
+    customerName: { type: String, required: true },
+    email: { type: String, lowercase: true, trim: true },
+    cartId: { type: Types.ObjectId, ref: 'Cart' },
+
+    cartItems: { type: [OrderItemSchema], required: true },
+    addressInfo: { type: AddressInfoSchema },
+
+    totalAmount: { type: Number, required: true, min: 0 }, // integer Rupiah (server-side verified)
     orderStatus: {
       type: String,
-      enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+      enum: ['pending', 'confirmed', 'cancelled', 'expired', 'challenge', 'needs_review'],
       default: 'pending',
-    },
-    paymentMethod: {
-      type: String,
-      enum: ['midtrans', 'cod'],
-      default: 'midtrans',
+      index: true,
     },
     paymentStatus: {
       type: String,
-      enum: ['unpaid', 'pending', 'paid', 'failed'],
+      enum: ['unpaid', 'pending', 'paid', 'failed', 'refund'],
       default: 'unpaid',
+      index: true,
     },
-    totalAmount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    orderDate: {
-      type: Date,
-      default: Date.now,
-    },
-    orderUpdateDate: {
-      type: Date,
-      default: Date.now,
-    },
-    // Midtrans transaction data
-    transactionId: {
-      type: String,
-      default: null,
-    },
-    midtransResponse: {
-      type: Object,
-      default: null,
-    },
+    paymentMethod: { type: String, default: 'midtrans' },
+
+    midtrans: { type: MidtransSchema },
+
+    orderDate: { type: Date, default: Date.now },
+    orderUpdateDate: { type: Date },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// Index for better query performance
-OrderSchema.index({ userId: 1, orderDate: -1 });
-OrderSchema.index({ orderStatus: 1 });
-OrderSchema.index({ paymentStatus: 1 });
-
-module.exports = mongoose.model('Order', OrderSchema);
+module.exports = model('Order', OrderSchema);

@@ -1,6 +1,4 @@
-// File: helpers/midtrans.js
-
-const midtransClient = require("midtrans-client");
+const midtransClient = require('midtrans-client');
 
 // Inisialisasi Snap API dengan kredensial dari .env
 const snap = new midtransClient.Snap({

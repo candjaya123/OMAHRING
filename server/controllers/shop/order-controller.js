@@ -1,336 +1,426 @@
+// controllers/shop/order-controller.js
+const crypto = require('crypto');
 const snap = require('../../helpers/midtrans');
 const Order = require('../../models/Order');
 const Cart = require('../../models/Cart');
 const Product = require('../../models/Product');
 const User = require('../../models/User');
-const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 
+// ==== util helpers ====
+const toInt = (n) => {
+  const x = Math.round(Number(n || 0));
+  if (!Number.isFinite(x) || x < 0) throw new Error('Invalid amount');
+  return x;
+};
+
+const verifyMidtransSignature = ({ order_id, status_code, gross_amount, signature_key }) => {
+  const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
+  const raw = `${order_id}${status_code}${gross_amount}${serverKey}`;
+  const expected = crypto.createHash('sha512').update(raw).digest('hex');
+  return expected === signature_key;
+};
+
+// ==== CREATE ORDER ====
 const createOrder = async (req, res) => {
   try {
-    console.log('CreateOrder Request Body:', JSON.stringify(req.body, null, 2)); // Debug log
-
     const { userId, cartItems, addressInfo, totalAmount, cartId, customerName, email } = req.body;
 
-    // 1. Validasi input yang lebih spesifik
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID diperlukan.' });
-    }
-    if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Cart items tidak valid atau kosong.' });
-    }
-    if (!addressInfo || !addressInfo.address || !addressInfo.city || !addressInfo.phone) {
+    // 1) Validasi input minimum
+    if (!userId) return res.status(400).json({ success: false, message: 'User ID diperlukan.' });
+    if (!Array.isArray(cartItems) || cartItems.length === 0)
+      return res.status(400).json({ success: false, message: 'Cart items kosong.' });
+    if (!addressInfo || !addressInfo.address || !addressInfo.city || !addressInfo.phone)
       return res.status(400).json({ success: false, message: 'Informasi alamat tidak lengkap.' });
-    }
-    if (!totalAmount || totalAmount <= 0) {
-      return res.status(400).json({ success: false, message: 'Total amount tidak valid.' });
-    }
-    if (!cartId) {
-      return res.status(400).json({ success: false, message: 'Cart ID diperlukan.' });
-    }
-    if (!customerName || !email) {
+    if (!cartId) return res.status(400).json({ success: false, message: 'Cart ID diperlukan.' });
+    if (!customerName || !email)
       return res
         .status(400)
         .json({ success: false, message: 'Nama customer dan email diperlukan.' });
+
+    // 2) Cegah duplikat checkout utk cart yang sama (pending/unpaid)
+    const existing = await Order.findOne({
+      cartId: new mongoose.Types.ObjectId(cartId),
+      paymentStatus: { $in: ['unpaid', 'pending'] },
+    }).lean();
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message:
+          'Checkout untuk cart ini sudah berjalan. Selesaikan pembayaran atau batalkan dahulu.',
+        orderId: existing._id,
+      });
     }
 
-    // 2. Validasi stok produk dengan error yang lebih spesifik
-    for (const item of cartItems) {
-      if (!item.productId || !item.variantName || !item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: 'Data item tidak lengkap (productId, variantName, quantity diperlukan).',
+    // 3) Cari/siapkan user (registered/guest by email)
+    let user;
+    if (String(userId).startsWith('guest-')) {
+      user = await User.findOne({ email });
+      if (!user) {
+        user = new User({
+          username: customerName, // fallback ke field yang kamu pakai sekarang
+          userName: customerName, // jika schema lama masih pakai userName
+          email,
+          role: 'user',
         });
+        await user.save();
       }
+    } else {
+      user = await User.findById(userId);
+      if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
+    }
 
-      const product = await Product.findById(item.productId);
+    // 4) Validasi stok & hitung ulang total dari DB (bukan dari FE)
+    const normalizedItems = [];
+    let expectedTotal = 0;
+
+    for (const item of cartItems) {
+      if (!item.productId || !item.variantName || !item.quantity)
+        return res.status(400).json({ success: false, message: 'Item tidak lengkap.' });
+
+      const product = await Product.findById(item.productId).lean();
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: `Produk dengan ID ${item.productId} tidak ditemukan.`,
+          message: `Produk ${item.productId} tidak ditemukan.`,
         });
       }
 
-      const variant = product.variants.find((v) => v.name === item.variantName);
+      const variant = (product.variants || []).find((v) => v.name === item.variantName);
       if (!variant) {
         return res.status(400).json({
           success: false,
-          message: `Varian ${item.variantName} tidak ditemukan untuk produk ${product.title}.`,
+          message: `Varian ${item.variantName} tidak ditemukan untuk ${product.title}.`,
         });
       }
 
       if (variant.totalStock < item.quantity) {
         return res.status(400).json({
           success: false,
-          message: `Stok untuk ${product.title} (${item.variantName}) tidak mencukupi. Tersedia: ${variant.totalStock}, diminta: ${item.quantity}.`,
+          message: `Stok kurang untuk ${product.title} (${variant.name}). Tersisa: ${variant.totalStock}`,
         });
       }
+
+      const unitPrice = toInt(variant.salePrice ?? variant.price);
+      expectedTotal += unitPrice * toInt(item.quantity);
+
+      normalizedItems.push({
+        productId: product._id,
+        title: product.title,
+        image:
+          item.image ||
+          (Array.isArray(product.images)
+            ? product.images.find((i) => i.isPrimary)?.url || product.images[0]?.url
+            : undefined),
+        price: unitPrice,
+        quantity: toInt(item.quantity),
+        variantName: variant.name,
+      });
     }
 
-    let finalUserId;
-    let user;
+    // 5) Cocokkan total dari FE (opsional – kalau FE kirim shippingFee, tambahkan di sini)
+    if (toInt(totalAmount) !== expectedTotal) {
+      return res.status(400).json({
+        success: false,
+        message: `Total amount tidak sesuai. FE=${toInt(totalAmount)}, Server=${expectedTotal}`,
+      });
+    }
 
-    // 3. Logika user handling yang disederhanakan
-    try {
-      if (userId && !userId.startsWith('guest-')) {
-        // Registered user
-        user = await User.findById(userId);
-        if (!user) {
-          return res.status(404).json({
-            success: false,
-            message: 'User tidak ditemukan.',
-          });
-        }
-        finalUserId = user._id;
-      } else {
-        // Guest user - cari berdasarkan email atau buat baru
-        user = await User.findOne({ email });
-        if (!user) {
-          user = new User({
-            userName: customerName,
-            email: email,
-            role: 'user',
-          });
-          await user.save();
-        }
-        finalUserId = user._id;
+    // 6) Buat Order (status pending/unpaid)
+    const newOrder = await Order.create({
+      userId: user._id,
+      customerName,
+      email,
+      cartId,
+      cartItems: normalizedItems,
+      addressInfo: {
+        address: addressInfo.address,
+        city: addressInfo.city,
+        pincode: addressInfo.pincode || addressInfo.kodePos || '',
+        phone: addressInfo.phone,
+        notes: addressInfo.notes || '',
+      },
+      orderStatus: 'pending',
+      paymentMethod: 'midtrans',
+      paymentStatus: 'unpaid',
+      totalAmount: expectedTotal,
+      orderDate: new Date(),
+    });
+
+    // 7) Parameter Snap
+    const parameter = {
+      transaction_details: {
+        order_id: newOrder._id.toString(), // unique
+        gross_amount: expectedTotal, // integer
+      },
+      item_details: normalizedItems.map((it) => ({
+        id: it.productId.toString(),
+        price: it.price,
+        quantity: it.quantity,
+        name: `${it.title} - ${it.variantName}`,
+      })),
+      customer_details: {
+        first_name: customerName,
+        email: email,
+        phone: addressInfo.phone,
+      },
+      enabled_payments: [
+        'credit_card',
+        'gopay',
+        'qris',
+        'shopeepay',
+        'echannel', // Mandiri bill
+        'bank_transfer', // BCA/BNI/BRI/Permata
+      ],
+      credit_card: { secure: true },
+      callbacks: {
+        finish: `${process.env.FRONTEND_URL}/shop/payment-success`,
+        error: `${process.env.FRONTEND_URL}/shop/checkout`,
+        pending: `${process.env.FRONTEND_URL}/shop/payment-pending`,
+      },
+      expiry: { unit: 'minutes', duration: 120 }, // pembayaran kadaluarsa 2 jam
+    };
+
+    const transaction = await snap.createTransaction(parameter);
+
+    // Simpan sebagian info midtrans (opsional, token tidak perlu disimpan)
+    await Order.updateOne(
+      { _id: newOrder._id },
+      {
+        $set: {
+          'midtrans.orderId': newOrder._id.toString(),
+        },
       }
-    } catch (userError) {
-      console.error('User handling error:', userError);
-      return res.status(500).json({
-        success: false,
-        message: 'Gagal memproses data user: ' + userError.message,
-      });
-    }
+    );
 
-    // 4. Buat pesanan baru dengan validasi
-    let newOrder;
-    try {
-      newOrder = new Order({
-        userId: finalUserId,
-        customerName,
-        cartId,
-        cartItems: cartItems.map((item) => ({
-          productId: item.productId,
-          title: item.title,
-          image: item.image,
-          price: item.price,
-          quantity: item.quantity,
-          variantName: item.variantName,
-        })),
-        addressInfo: {
-          address: addressInfo.address,
-          city: addressInfo.city,
-          pincode: addressInfo.pincode || addressInfo.kodePos || '', // Handle both field names
-          phone: addressInfo.phone,
-          notes: addressInfo.notes || '',
-        },
-        orderStatus: 'pending',
-        paymentMethod: 'midtrans',
-        paymentStatus: 'unpaid',
-        totalAmount,
-        orderDate: new Date(),
-      });
-
-      await newOrder.save();
-    } catch (orderError) {
-      console.error('Order creation error:', orderError);
-      return res.status(500).json({
-        success: false,
-        message: 'Gagal membuat pesanan: ' + orderError.message,
-      });
-    }
-
-    // 5. Buat transaksi Midtrans dengan error handling
-    try {
-      const parameter = {
-        transaction_details: {
-          order_id: newOrder._id.toString(),
-          gross_amount: totalAmount,
-        },
-        customer_details: {
-          first_name: customerName,
-          email: email,
-          phone: addressInfo.phone,
-        },
-        item_details: cartItems.map((item) => ({
-          id: item.productId,
-          price: Math.round(item.price), // Pastikan integer
-          quantity: item.quantity,
-          name: `${item.title} - ${item.variantName}`,
-        })),
-        callbacks: {
-          finish: process.env.FRONTEND_URL + '/shop/payment-success',
-          error: process.env.FRONTEND_URL + '/shop/checkout',
-          pending: process.env.FRONTEND_URL + '/shop/payment-pending',
-        },
-      };
-
-      console.log('Midtrans Parameter:', JSON.stringify(parameter, null, 2)); // Debug log
-
-      const transaction = await snap.createTransaction(parameter);
-      console.log(transaction.token);
-
-      res.status(201).json({
-        success: true,
-        token: transaction.token,
-        orderId: newOrder._id,
-        message: 'Pesanan berhasil dibuat',
-      });
-    } catch (midtransError) {
-      console.error('Midtrans Error:', midtransError);
-
-      // Hapus order yang sudah dibuat jika Midtrans gagal
-      await Order.findByIdAndDelete(newOrder._id);
-
-      return res.status(500).json({
-        success: false,
-        message: 'Gagal membuat pembayaran Midtrans: ' + midtransError.message,
-      });
-    }
+    return res.status(201).json({
+      success: true,
+      token: transaction.token,
+      redirectUrl: transaction.redirect_url,
+      orderId: newOrder._id,
+      message: 'Pesanan berhasil dibuat',
+    });
   } catch (error) {
-    console.error('CreateOrder General Error:', error);
-    res.status(500).json({
+    console.error('CreateOrder Error:', error);
+    return res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan server: ' + error.message,
     });
   }
 };
 
-// Improved handleNotification with better error handling
+// ==== HANDLE NOTIFICATION (webhook) ====
 const handleNotification = async (req, res) => {
   try {
-    console.log('Midtrans Notification:', req.body); // Debug log
+    // Midtrans kirim JSON ke endpoint ini
+    const body = req.body;
+    console.log('Midtrans Notification:', body);
 
-    const notificationJson = await snap.transaction.notification(req.body);
-    const orderId = notificationJson.order_id;
-    const transactionStatus = notificationJson.transaction_status;
-    const fraudStatus = notificationJson.fraud_status;
+    // (Opsional) pakai SDK untuk normalize
+    const notificationJson = await snap.transaction.notification(body);
 
-    console.log(`Processing notification for order ${orderId}: ${transactionStatus}`);
+    const {
+      order_id,
+      transaction_status,
+      fraud_status,
+      payment_type,
+      status_code,
+      gross_amount,
+      signature_key,
+      transaction_id,
+    } = notificationJson;
 
-    let order = await Order.findById(orderId);
-    if (!order) {
-      console.error(`Order ${orderId} not found`);
-      return res.status(404).send('Order not found.');
+    // Verifikasi signature (wajib)
+    const isValid = verifyMidtransSignature({
+      order_id,
+      status_code,
+      gross_amount,
+      signature_key,
+    });
+    if (!isValid) {
+      console.error('Invalid Midtrans signature for order:', order_id);
+      return res.status(403).send('Invalid signature');
     }
 
-    // Update order based on transaction status
-    if (transactionStatus == 'capture' || transactionStatus == 'settlement') {
-      if (fraudStatus == 'accept') {
-        order.paymentStatus = 'paid';
-        order.orderStatus = 'confirmed';
+    const order = await Order.findById(order_id);
+    if (!order) {
+      console.error(`Order ${order_id} not found`);
+      return res.status(404).send('Order not found');
+    }
 
-        // Kurangi stok produk
-        for (const item of order.cartItems) {
-          try {
-            const product = await Product.findById(item.productId);
-            if (product) {
-              const variant = product.variants.find((v) => v.name === item.variantName);
-              if (variant && variant.totalStock >= item.quantity) {
-                variant.totalStock -= item.quantity;
-                await product.save();
-                console.log(
-                  `Stock reduced for ${product.title} - ${variant.name}: ${item.quantity}`
-                );
-              }
-            }
-          } catch (stockError) {
-            console.error(`Error reducing stock for item ${item.productId}:`, stockError);
-          }
-        }
+    // Catat data midtrans terbaru
+    order.midtrans = {
+      ...(order.midtrans || {}),
+      orderId: order_id,
+      transactionId: transaction_id,
+      transactionStatus: transaction_status,
+      fraudStatus: fraud_status,
+      paymentType: payment_type,
+      statusCode: status_code,
+      grossAmount: gross_amount,
+      signatureKey: signature_key,
+      rawNotification: notificationJson,
+    };
 
-        // Hapus keranjang
-        try {
-          await Cart.findByIdAndDelete(order.cartId);
-          console.log(`Cart ${order.cartId} deleted`);
-        } catch (cartError) {
-          console.error(`Error deleting cart ${order.cartId}:`, cartError);
-        }
+    // Map status
+    if (transaction_status === 'capture') {
+      if (fraud_status === 'challenge') {
+        order.paymentStatus = 'pending';
+        order.orderStatus = 'challenge';
+      } else {
+        // paid
+        await fulfillPaidOrder(order);
       }
-    } else if (
-      transactionStatus == 'cancel' ||
-      transactionStatus == 'deny' ||
-      transactionStatus == 'expire'
-    ) {
+    } else if (transaction_status === 'settlement') {
+      await fulfillPaidOrder(order);
+    } else if (['cancel', 'deny', 'expire'].includes(transaction_status)) {
       order.paymentStatus = 'failed';
-      order.orderStatus = 'cancelled';
-    } else if (transactionStatus == 'pending') {
+      order.orderStatus = transaction_status === 'expire' ? 'expired' : 'cancelled';
+    } else if (transaction_status === 'pending') {
       order.paymentStatus = 'pending';
       order.orderStatus = 'pending';
+    } else {
+      // status lain
+      order.paymentStatus = 'pending';
+      order.orderStatus = 'needs_review';
     }
 
     order.orderUpdateDate = new Date();
     await order.save();
 
-    console.log(`Order ${orderId} updated: ${order.paymentStatus}`);
-    res.status(200).send('Notification processed successfully.');
+    console.log(`Order ${order_id} -> ${order.paymentStatus}/${order.orderStatus}`);
+    return res.status(200).send('OK');
   } catch (error) {
     console.error('HandleNotification Error:', error);
-    res.status(500).send('Error handling notification: ' + error.message);
+    return res.status(500).send('Error handling notification: ' + error.message);
   }
 };
 
-// Rest of the functions remain the same but with better error logging
+// ==== helper: fulfill order ketika sudah paid ====
+async function fulfillPaidOrder(orderDoc) {
+  console.log('=== FULFILL PAID ORDER START ===');
+  console.log('Order ID:', orderDoc._id);
+  console.log('Initial Payment Status:', orderDoc.paymentStatus);
+  console.log('Initial Order Status:', orderDoc.orderStatus);
+  console.log('Cart Items:', orderDoc.cartItems);
+
+  // Idempotent: hanya proses jika sebelumnya belum paid/confirmed
+  if (orderDoc.paymentStatus === 'paid' || orderDoc.orderStatus === 'confirmed') {
+    console.log('Order sudah diproses sebelumnya, keluar dari fungsi.');
+    return;
+  }
+
+  // Kurangi stok tiap item secara atomik
+  for (const item of orderDoc.cartItems) {
+    console.log(`\nMemproses item: ${item.title} - ${item.variantName}`);
+    console.log(`Target Qty: ${item.quantity}`);
+
+    const res = await Product.updateOne(
+      {
+        _id: item.productId,
+        'variants.name': item.variantName,
+        'variants.totalStock': { $gte: item.quantity },
+      },
+      {
+        $inc: { 'variants.$.totalStock': -item.quantity },
+      }
+    );
+
+    console.log('Update Result:', res);
+
+    if (!res.matchedCount || !res.modifiedCount) {
+      console.error(
+        `❌ Gagal reduce stock: product=${item.productId}, variant=${item.variantName}, qty=${item.quantity}`
+      );
+      orderDoc.orderStatus = 'needs_review';
+    } else {
+      console.log(
+        `✅ Berhasil mengurangi stok untuk ${item.variantName} sebanyak ${item.quantity}`
+      );
+    }
+  }
+
+  // Hapus cart setelah paid
+  if (orderDoc.cartId) {
+    try {
+      await Cart.findByIdAndDelete(orderDoc.cartId);
+      console.log(`Cart ${orderDoc.cartId} berhasil dihapus`);
+    } catch (e) {
+      console.error(`Delete cart ${orderDoc.cartId} error:`, e.message);
+    }
+  }
+
+  orderDoc.paymentStatus = 'paid';
+
+  if (orderDoc.orderStatus !== 'needs_review') {
+    orderDoc.orderStatus = 'confirmed';
+  }
+
+  console.log('Final Payment Status:', orderDoc.paymentStatus);
+  console.log('Final Order Status:', orderDoc.orderStatus);
+  console.log('=== FULFILL PAID ORDER END ===\n');
+}
+
+// ==== GET ORDERS BY USER ====
 const getAllOrdersByUser = async (req, res) => {
   try {
     const { userId } = req.params;
-
     if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID diperlukan',
-      });
+      return res.status(400).json({ success: false, message: 'User ID diperlukan' });
     }
 
     const orders = await Order.find({ userId }).sort({ orderDate: -1 });
-
-    res.status(200).json({
-      success: true,
-      data: orders,
-    });
+    return res.status(200).json({ success: true, data: orders });
   } catch (error) {
     console.error('GetAllOrdersByUser Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Terjadi kesalahan pada server: ' + error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: 'Terjadi kesalahan pada server: ' + error.message });
   }
 };
 
+// ==== GET ORDER DETAILS ====
 const getOrderDetails = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order ID diperlukan',
-      });
-    }
+    if (!id) return res.status(400).json({ success: false, message: 'Order ID diperlukan' });
 
     const order = await Order.findById(id);
+    if (!order)
+      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
 
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Pesanan tidak ditemukan.',
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: order,
-    });
+    return res.status(200).json({ success: true, data: order });
   } catch (error) {
     console.error('GetOrderDetails Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Terjadi kesalahan pada server: ' + error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: 'Terjadi kesalahan pada server: ' + error.message });
   }
 };
+
+async function reduceStockAtomic(orderDoc) {
+  for (const item of orderDoc.cartItems) {
+    const res = await Product.updateOne(
+      {
+        _id: item.productId,
+        'variants.name': item.variantName, // pakai name dulu
+        'variants.totalStock': { $gte: item.quantity }, // ganti ke "variants.stock" jika field kamu pakai itu
+      },
+      { $inc: { 'variants.$.totalStock': -item.quantity } } // ganti path jika perlu
+    );
+
+    if (!res.matchedCount || !res.modifiedCount) {
+      console.error('[Stock] gagal reduce', {
+        productId: item.productId,
+        variantName: item.variantName,
+        qty: item.quantity,
+        mongo: res,
+      });
+      // tandai agar bisa direview manual, tapi jangan fail pembayaran
+      if (orderDoc.orderStatus !== 'needs_review') orderDoc.orderStatus = 'needs_review';
+    }
+  }
+}
 
 module.exports = {
   createOrder,
