@@ -112,7 +112,7 @@ function App() {
           <Route path="checkout" element={<ShoppingCheckout />} />
           <Route element={<AuthedGuard />}>
             <Route path="payment-success" element={<PaymentSuccessPage />} />
-            <Route path="payment-pending" element={<PaymentPendingPage />} />
+            <Route path="payment-pending/:orderId" element={<PaymentPendingPage />} />
             <Route path="account" element={<ShoppingAccount />} />
           </Route>
         </Route>

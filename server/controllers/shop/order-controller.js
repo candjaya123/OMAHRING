@@ -21,6 +21,30 @@ const verifyMidtransSignature = ({ order_id, status_code, gross_amount, signatur
   return expected === signature_key;
 };
 
+// Helper to cleanup expired orders
+const cleanupExpiredOrders = async (cartId) => {
+  try {
+    const expiredTime = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
+
+    await Order.updateMany(
+      {
+        cartId: new mongoose.Types.ObjectId(cartId),
+        paymentStatus: { $in: ['unpaid', 'pending'] },
+        orderDate: { $lt: expiredTime },
+      },
+      {
+        $set: {
+          paymentStatus: 'expired',
+          orderStatus: 'expired',
+          orderUpdateDate: new Date(),
+        },
+      }
+    );
+  } catch (error) {
+    console.error('Error cleaning up expired orders:', error);
+  }
+};
+
 // ==== CREATE ORDER ====
 const createOrder = async (req, res) => {
   try {
@@ -38,30 +62,83 @@ const createOrder = async (req, res) => {
         .status(400)
         .json({ success: false, message: 'Nama customer dan email diperlukan.' });
 
-    // 2) Cegah duplikat checkout utk cart yang sama (pending/unpaid)
+    // 2) Cleanup expired orders first
+    await cleanupExpiredOrders(cartId);
+
+    // 3) Cek duplikat checkout untuk cart yang sama (pending/unpaid)
     const existing = await Order.findOne({
       cartId: new mongoose.Types.ObjectId(cartId),
       paymentStatus: { $in: ['unpaid', 'pending'] },
     }).lean();
+
     if (existing) {
-      return res.status(409).json({
-        success: false,
-        message:
-          'Checkout untuk cart ini sudah berjalan. Selesaikan pembayaran atau batalkan dahulu.',
-        orderId: existing._id,
-      });
+      // Instead of error, return the existing order details for continuation
+      console.log(`Existing pending order found: ${existing._id}`);
+
+      // Generate new token for existing order
+      try {
+        const parameter = {
+          transaction_details: {
+            order_id: existing._id.toString(),
+            gross_amount: existing.totalAmount,
+          },
+          item_details: existing.cartItems.map((it) => ({
+            id: it.productId.toString(),
+            price: it.price,
+            quantity: it.quantity,
+            name: `${it.title} - ${it.variantName}`,
+          })),
+          customer_details: {
+            first_name: existing.customerName,
+            email: existing.email,
+            phone: existing.addressInfo?.phone,
+          },
+          enabled_payments: [
+            'credit_card',
+            'gopay',
+            'qris',
+            'shopeepay',
+            'echannel',
+            'bank_transfer',
+          ],
+          credit_card: { secure: true },
+          callbacks: {
+            finish: `${process.env.FRONTEND_URL}/shop/payment-success`,
+            error: `${process.env.FRONTEND_URL}/shop/checkout`,
+            pending: `${process.env.FRONTEND_URL}/shop/payment-pending`,
+          },
+          expiry: { unit: 'minutes', duration: 120 },
+        };
+
+        const transaction = await snap.createTransaction(parameter);
+
+        return res.status(200).json({
+          success: true,
+          token: transaction.token,
+          redirectUrl: transaction.redirect_url,
+          orderId: existing._id,
+          message: 'Melanjutkan checkout yang sudah ada',
+        });
+      } catch (tokenError) {
+        console.error('Error generating token for existing order:', tokenError);
+        return res.status(500).json({
+          success: false,
+          message: 'Gagal membuat token pembayaran untuk pesanan yang ada.',
+        });
+      }
     }
 
-    // 3) Cari/siapkan user (registered/guest by email)
+    // 4) Cari/siapkan user (registered/guest by email)
     let user;
     if (String(userId).startsWith('guest-')) {
       user = await User.findOne({ email });
       if (!user) {
         user = new User({
-          username: customerName, // fallback ke field yang kamu pakai sekarang
-          userName: customerName, // jika schema lama masih pakai userName
+          username: customerName,
+          userName: customerName,
           email,
           role: 'user',
+          isGuest: true, // Optional flag to identify guest users
         });
         await user.save();
       }
@@ -70,7 +147,7 @@ const createOrder = async (req, res) => {
       if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
     }
 
-    // 4) Validasi stok & hitung ulang total dari DB (bukan dari FE)
+    // 5) Validasi stok & hitung ulang total dari DB
     const normalizedItems = [];
     let expectedTotal = 0;
 
@@ -102,7 +179,6 @@ const createOrder = async (req, res) => {
       }
 
       const unitPrice = toInt(variant.salePrice || variant.price);
-
       expectedTotal += unitPrice * toInt(item.quantity);
 
       normalizedItems.push({
@@ -119,42 +195,75 @@ const createOrder = async (req, res) => {
       });
     }
 
-    // 5) Cocokkan total dari FE (opsional – kalau FE kirim shippingFee, tambahkan di sini)
+    // 6) Cocokkan total dari FE
     if (toInt(totalAmount) !== expectedTotal) {
       return res.status(400).json({
         success: false,
-        message: `Total amount tidak sesuai. FE=${toInt(
+        message: `Total amount tidak sesuai. Frontend: ${toInt(
           totalAmount
-        )}, Server=${expectedTotal}, normalized${normalizedItems}`,
+        )}, Server: ${expectedTotal}`,
       });
     }
 
-    // 6) Buat Order (status pending/unpaid)
-    const newOrder = await Order.create({
-      userId: user._id,
-      customerName,
-      email,
-      cartId,
-      cartItems: normalizedItems,
-      addressInfo: {
-        address: addressInfo.address,
-        city: addressInfo.city,
-        pincode: addressInfo.pincode || addressInfo.kodePos || '',
-        phone: addressInfo.phone,
-        notes: addressInfo.notes || '',
-      },
-      orderStatus: 'pending',
-      paymentMethod: 'midtrans',
-      paymentStatus: 'unpaid',
-      totalAmount: expectedTotal,
-      orderDate: new Date(),
-    });
+    // 7) Buat Order dengan session untuk atomicity
+    const session = await mongoose.startSession();
+    let newOrder;
 
-    // 7) Parameter Snap
+    try {
+      await session.withTransaction(async () => {
+        // Create order
+        newOrder = await Order.create(
+          [
+            {
+              userId: user._id,
+              customerName,
+              email,
+              cartId,
+              cartItems: normalizedItems,
+              addressInfo: {
+                address: addressInfo.address,
+                city: addressInfo.city,
+                pincode: addressInfo.pincode || addressInfo.kodePos || '',
+                phone: addressInfo.phone,
+                notes: addressInfo.notes || '',
+              },
+              orderStatus: 'pending',
+              paymentMethod: 'midtrans',
+              paymentStatus: 'unpaid',
+              totalAmount: expectedTotal,
+              orderDate: new Date(),
+            },
+          ],
+          { session }
+        );
+
+        // Soft reserve stock (optional - can be done on payment success instead)
+        for (const item of normalizedItems) {
+          await Product.updateOne(
+            {
+              _id: item.productId,
+              'variants.name': item.variantName,
+              'variants.totalStock': { $gte: item.quantity },
+            },
+            {
+              $inc: { 'variants.$.reservedStock': item.quantity },
+            },
+            { session }
+          );
+        }
+      });
+    } catch (transactionError) {
+      await session.abortTransaction();
+      throw transactionError;
+    } finally {
+      await session.endSession();
+    }
+
+    // 8) Parameter Snap
     const parameter = {
       transaction_details: {
-        order_id: newOrder._id.toString(), // unique
-        gross_amount: expectedTotal, // integer
+        order_id: newOrder[0]._id.toString(),
+        gross_amount: expectedTotal,
       },
       item_details: normalizedItems.map((it) => ({
         id: it.productId.toString(),
@@ -167,47 +276,36 @@ const createOrder = async (req, res) => {
         email: email,
         phone: addressInfo.phone,
       },
-      enabled_payments: [
-        'credit_card',
-        'gopay',
-        'qris',
-        'shopeepay',
-        'echannel', // Mandiri bill
-        'bank_transfer', // BCA/BNI/BRI/Permata
-      ],
+      enabled_payments: ['credit_card', 'gopay', 'qris', 'shopeepay', 'echannel', 'bank_transfer'],
       credit_card: { secure: true },
       callbacks: {
         finish: `${process.env.FRONTEND_URL}/shop/payment-success`,
         error: `${process.env.FRONTEND_URL}/shop/checkout`,
         pending: `${process.env.FRONTEND_URL}/shop/payment-pending`,
       },
-      expiry: { unit: 'minutes', duration: 120 }, // pembayaran kadaluarsa 2 jam
+      expiry: { unit: 'minutes', duration: 120 },
     };
 
     const transaction = await snap.createTransaction(parameter);
 
-    // Simpan sebagian info midtrans (opsional, token tidak perlu disimpan)
+    // Update order with midtrans info
     await Order.updateOne(
-      { _id: newOrder._id },
+      { _id: newOrder[0]._id },
       {
         $set: {
-          'midtrans.orderId': newOrder._id.toString(),
+          'midtrans.orderId': newOrder[0]._id.toString(),
+          'midtrans.transactionToken': transaction.token, // Store token for reference
         },
       }
     );
 
-    // Hapus cart setelah order dibuat
-    try {
-      await Cart.findByIdAndDelete(cartId);
-    } catch (e) {
-      console.error(`Delete cart ${cartId} error:`, e.message);
-    }
+    // DON'T delete cart here - delete only after successful payment
 
     return res.status(201).json({
       success: true,
       token: transaction.token,
       redirectUrl: transaction.redirect_url,
-      orderId: newOrder._id,
+      orderId: newOrder[0]._id,
       message: 'Pesanan berhasil dibuat',
     });
   } catch (error) {
@@ -222,10 +320,7 @@ const createOrder = async (req, res) => {
 // ==== HANDLE NOTIFICATION (webhook) ====
 const handleNotification = async (req, res) => {
   try {
-    // Midtrans kirim JSON ke endpoint ini
     const body = req.body;
-
-    // (Opsional) pakai SDK untuk normalize
     const notificationJson = await snap.transaction.notification(body);
 
     const {
@@ -239,7 +334,7 @@ const handleNotification = async (req, res) => {
       transaction_id,
     } = notificationJson;
 
-    // Verifikasi signature (wajib)
+    // Verify signature
     const isValid = verifyMidtransSignature({
       order_id,
       status_code,
@@ -257,7 +352,7 @@ const handleNotification = async (req, res) => {
       return res.status(404).send('Order not found');
     }
 
-    // Catat data midtrans terbaru
+    // Record midtrans data
     order.midtrans = {
       ...(order.midtrans || {}),
       orderId: order_id,
@@ -269,27 +364,25 @@ const handleNotification = async (req, res) => {
       grossAmount: gross_amount,
       signatureKey: signature_key,
       rawNotification: notificationJson,
+      lastUpdated: new Date(),
     };
 
-    // Map status
+    // Handle status mapping
     if (transaction_status === 'capture') {
       if (fraud_status === 'challenge') {
         order.paymentStatus = 'pending';
         order.orderStatus = 'challenge';
       } else {
-        // paid
         await fulfillPaidOrder(order);
       }
     } else if (transaction_status === 'settlement') {
       await fulfillPaidOrder(order);
     } else if (['cancel', 'deny', 'expire'].includes(transaction_status)) {
-      order.paymentStatus = 'failed';
-      order.orderStatus = transaction_status === 'expire' ? 'expired' : 'cancelled';
+      await handleFailedOrder(order, transaction_status);
     } else if (transaction_status === 'pending') {
       order.paymentStatus = 'pending';
       order.orderStatus = 'pending';
     } else {
-      // status lain
       order.paymentStatus = 'pending';
       order.orderStatus = 'needs_review';
     }
@@ -304,53 +397,89 @@ const handleNotification = async (req, res) => {
   }
 };
 
-// ==== helper: fulfill order ketika sudah paid ====
+// Helper: handle failed/cancelled orders
+async function handleFailedOrder(orderDoc, transactionStatus) {
+  orderDoc.paymentStatus = 'failed';
+  orderDoc.orderStatus = transactionStatus === 'expire' ? 'expired' : 'cancelled';
+
+  // Release reserved stock
+  for (const item of orderDoc.cartItems) {
+    try {
+      await Product.updateOne(
+        {
+          _id: item.productId,
+          'variants.name': item.variantName,
+        },
+        {
+          $inc: { 'variants.$.reservedStock': -item.quantity },
+        }
+      );
+    } catch (error) {
+      console.error(`Error releasing reserved stock for ${item.productId}:`, error);
+    }
+  }
+}
+
+// Helper: fulfill order when paid
 async function fulfillPaidOrder(orderDoc) {
-  // Idempotent: hanya proses jika sebelumnya belum paid/confirmed
   if (orderDoc.paymentStatus === 'paid' || orderDoc.orderStatus === 'confirmed') {
-    console.log('Order sudah diproses sebelumnya, keluar dari fungsi.');
+    console.log('Order already processed, skipping.');
     return;
   }
 
-  // Kurangi stok tiap item secara atomik
-  for (const item of orderDoc.cartItems) {
-    const res = await Product.updateOne(
-      {
-        _id: item.productId,
-        'variants.name': item.variantName,
-        'variants.totalStock': { $gte: item.quantity },
-      },
-      {
-        $inc: { 'variants.$.totalStock': -item.quantity },
+  const session = await mongoose.startSession();
+
+  try {
+    await session.withTransaction(async () => {
+      // Move reserved stock to actual stock reduction
+      for (const item of orderDoc.cartItems) {
+        const updateResult = await Product.updateOne(
+          {
+            _id: item.productId,
+            'variants.name': item.variantName,
+            $expr: {
+              $gte: [
+                { $add: ['$variants.$.totalStock', '$variants.$.reservedStock'] },
+                item.quantity,
+              ],
+            },
+          },
+          {
+            $inc: {
+              'variants.$.totalStock': -item.quantity,
+              'variants.$.reservedStock': -item.quantity,
+            },
+          },
+          { session }
+        );
+
+        if (!updateResult.matchedCount || !updateResult.modifiedCount) {
+          throw new Error(
+            `Failed to update stock for product ${item.productId}, variant ${item.variantName}`
+          );
+        }
+
+        console.log(`✅ Stock reduced for ${item.variantName}: -${item.quantity}`);
       }
-    );
 
-    if (!res.matchedCount || !res.modifiedCount) {
-      console.error(
-        `❌ Gagal reduce stock: product=${item.productId}, variant=${item.variantName}, qty=${item.quantity}`
-      );
-      orderDoc.orderStatus = 'needs_review';
-    } else {
-      console.log(
-        `✅ Berhasil mengurangi stok untuk ${item.variantName} sebanyak ${item.quantity}`
-      );
-    }
-  }
+      // Delete cart after successful payment
+      if (orderDoc.cartId) {
+        await Cart.findByIdAndDelete(orderDoc.cartId, { session });
+        console.log(`Cart ${orderDoc.cartId} deleted`);
+      }
 
-  // Hapus cart setelah paid
-  if (orderDoc.cartId) {
-    try {
-      await Cart.findByIdAndDelete(orderDoc.cartId);
-      console.log(`Cart ${orderDoc.cartId} berhasil dihapus`);
-    } catch (e) {
-      console.error(`Delete cart ${orderDoc.cartId} error:`, e.message);
-    }
-  }
-
-  orderDoc.paymentStatus = 'paid';
-
-  if (orderDoc.orderStatus !== 'needs_review') {
-    orderDoc.orderStatus = 'confirmed';
+      // Update order status
+      orderDoc.paymentStatus = 'paid';
+      orderDoc.orderStatus = 'confirmed';
+      await orderDoc.save({ session });
+    });
+  } catch (error) {
+    console.error('Error in fulfillPaidOrder:', error);
+    orderDoc.orderStatus = 'needs_review';
+    orderDoc.notes = (orderDoc.notes || '') + ` | Error: ${error.message}`;
+    await orderDoc.save();
+  } finally {
+    await session.endSession();
   }
 }
 
@@ -362,7 +491,11 @@ const getAllOrdersByUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'User ID diperlukan' });
     }
 
-    const orders = await Order.find({ userId }).sort({ orderDate: -1 });
+    const orders = await Order.find({ userId })
+      .sort({ orderDate: -1 })
+      .limit(50) // Limit for performance
+      .lean();
+
     return res.status(200).json({ success: true, data: orders });
   } catch (error) {
     console.error('GetAllOrdersByUser Error:', error);
@@ -378,7 +511,7 @@ const getOrderDetails = async (req, res) => {
     const { id } = req.params;
     if (!id) return res.status(400).json({ success: false, message: 'Order ID diperlukan' });
 
-    const order = await Order.findById(id);
+    const order = await Order.findById(id).lean();
     if (!order)
       return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
 
@@ -391,7 +524,7 @@ const getOrderDetails = async (req, res) => {
   }
 };
 
-// ==== REGENERATE SNAP TOKEN UNTUK ORDER PENDING ====
+// ==== REGENERATE SNAP TOKEN ====
 const regenerateSnapToken = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -399,20 +532,41 @@ const regenerateSnapToken = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Order ID diperlukan' });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).lean();
     if (!order) {
       return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
     }
 
-    // Hanya izinkan regenerate kalau status masih unpaid/pending
+    // Only allow regeneration for unpaid/pending orders
     if (!['unpaid', 'pending'].includes(order.paymentStatus)) {
       return res.status(400).json({
         success: false,
-        message: `Order ${orderId} tidak bisa regenerate token, status sekarang: ${order.paymentStatus}`,
+        message: `Order tidak dapat diproses ulang. Status: ${order.paymentStatus}`,
       });
     }
 
-    // Buat parameter baru untuk Snap
+    // Check if order is not too old (prevent token generation for very old orders)
+    const orderAge = Date.now() - new Date(order.orderDate).getTime();
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+    if (orderAge > maxAge) {
+      await Order.updateOne(
+        { _id: orderId },
+        {
+          $set: {
+            paymentStatus: 'expired',
+            orderStatus: 'expired',
+            orderUpdateDate: new Date(),
+          },
+        }
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: 'Pesanan sudah kadaluarsa. Silakan buat pesanan baru.',
+      });
+    }
+
     const parameter = {
       transaction_details: {
         order_id: order._id.toString(),
@@ -436,10 +590,22 @@ const regenerateSnapToken = async (req, res) => {
         error: `${process.env.FRONTEND_URL}/shop/checkout`,
         pending: `${process.env.FRONTEND_URL}/shop/payment-pending`,
       },
-      expiry: { unit: 'minutes', duration: 120 }, // 2 jam
+      expiry: { unit: 'minutes', duration: 120 },
     };
 
     const transaction = await snap.createTransaction(parameter);
+
+    // Update order with new token info
+    await Order.updateOne(
+      { _id: orderId },
+      {
+        $set: {
+          'midtrans.transactionToken': transaction.token,
+          'midtrans.lastTokenGenerated': new Date(),
+          orderUpdateDate: new Date(),
+        },
+      }
+    );
 
     return res.status(200).json({
       success: true,
@@ -456,10 +622,68 @@ const regenerateSnapToken = async (req, res) => {
   }
 };
 
+// ==== CANCEL ORDER ====
+const cancelOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID diperlukan' });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+    }
+
+    // Only allow cancellation for unpaid/pending orders
+    if (!['unpaid', 'pending'].includes(order.paymentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Order tidak dapat dibatalkan. Status: ${order.paymentStatus}`,
+      });
+    }
+
+    // Release reserved stock if any
+    for (const item of order.cartItems) {
+      try {
+        await Product.updateOne(
+          {
+            _id: item.productId,
+            'variants.name': item.variantName,
+          },
+          {
+            $inc: { 'variants.$.reservedStock': -item.quantity },
+          }
+        );
+      } catch (error) {
+        console.error(`Error releasing reserved stock for ${item.productId}:`, error);
+      }
+    }
+
+    // Update order status
+    order.paymentStatus = 'cancelled';
+    order.orderStatus = 'cancelled';
+    order.orderUpdateDate = new Date();
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Pesanan berhasil dibatalkan',
+    });
+  } catch (error) {
+    console.error('CancelOrder Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server: ' + error.message,
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   handleNotification,
   getAllOrdersByUser,
   getOrderDetails,
   regenerateSnapToken,
+  cancelOrder,
 };

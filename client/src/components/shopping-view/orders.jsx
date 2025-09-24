@@ -85,7 +85,7 @@ function ShoppingOrders() {
                     </TableCell>
                     {orderItem?.orderStatus === 'pending' && (
                       <TableCell>
-                        <Link to={`/shop/payment-pending`}>
+                        <Link to={`/shop/payment-pending/${orderItem?._id}`}>
                           <Button>Pembayaran</Button>
                         </Link>
                       </TableCell>
