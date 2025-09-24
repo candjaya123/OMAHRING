@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,19 +9,17 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, MapPin, User, Phone, AlertCircle } from 'lucide-react';
+import { Plus, MapPin, User, Phone } from 'lucide-react';
 import { createNewOrder } from '@/store/shop/order-slice';
 import { fetchAllAddresses } from '@/store/shop/address-slice';
 import img from '../../assets/account.jpg';
 
 function ShoppingCheckout() {
-  const { cartItems } = useSelector((state) => state.shopCart);
+  const { cartItems } = useSelector((state) => state.shopCart); // Fixed selector name
   const { user } = useSelector((state) => state.auth);
-  const { isLoading } = useSelector((state) => state.shopOrder);
-  const { addressList, isLoading: addressLoading } = useSelector((state) => state.shopAddress);
-
+  const { isLoading, orderDetails } = useSelector((state) => state.shopOrder);
+  const { addressList, isLoading: addressLoading } = useSelector((state) => state.shopAddress); // Fixed selector name
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useDispatch();
   const { toast } = useToast();
 
@@ -46,21 +44,7 @@ function ShoppingCheckout() {
     phone: '',
     notes: '',
   });
-
   const [errors, setErrors] = useState({});
-  const [checkoutError, setCheckoutError] = useState('');
-
-  // Clear previous error messages when component mounts
-  useEffect(() => {
-    // Clear any existing tokens from previous failed checkouts
-    sessionStorage.removeItem('snapToken');
-    sessionStorage.removeItem('currentOrderId');
-
-    // Show error from navigation state if any
-    if (location.state?.error) {
-      setCheckoutError(location.state.error);
-    }
-  }, [location.state]);
 
   // Load addresses untuk user yang login
   useEffect(() => {
@@ -74,89 +58,59 @@ function ShoppingCheckout() {
     if (addressList && addressList.length > 0 && !selectedAddressId) {
       const defaultAddress = addressList.find((addr) => addr.isDefault) || addressList[0];
       setSelectedAddressId(defaultAddress._id);
-      setUseNewAddress(false); // Auto select existing address
     }
   }, [addressList, selectedAddressId]);
 
   const handleNewAddressChange = (e) => {
     const { name, value } = e.target;
     setNewAddressData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear specific field error when user types
-    if (errors[`new_${name}`]) {
-      setErrors((prev) => ({ ...prev, [`new_${name}`]: '' }));
-    }
   };
 
   const handleGuestInfoChange = (e) => {
     const { name, value } = e.target;
     setGuestInfo((prev) => ({ ...prev, [name]: value }));
-
-    // Clear specific field error when user types
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
   };
 
   const validateEmail = (email) => {
+    // Regex sederhana untuk validasi email
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailPattern.test(email);
-  };
-
-  const validatePhone = (phone) => {
-    // Basic phone validation (Indonesian format)
-    const phonePattern = /^(\+62|62|0)[\s-]?8[1-9]{1}\d{1}[\s-]?\d{4}[\s-]?\d{2,5}$/;
-    return phonePattern.test(phone.replace(/[\s-]/g, ''));
   };
 
   const validateGuestInfo = () => {
     const newErrors = {};
     const { name, email, address, city, pincode, phone } = guestInfo;
 
-    if (!name?.trim()) newErrors.name = 'Nama lengkap wajib diisi.';
-    if (!email?.trim()) {
-      newErrors.email = 'Email wajib diisi.';
-    } else if (!validateEmail(email)) {
-      newErrors.email = 'Format email tidak valid.';
-    }
-    if (!address?.trim()) newErrors.address = 'Alamat lengkap wajib diisi.';
-    if (!city?.trim()) newErrors.city = 'Kota wajib diisi.';
-    if (!pincode?.trim()) newErrors.pincode = 'Kode pos wajib diisi.';
-    if (!phone?.trim()) {
-      newErrors.phone = 'Nomor telepon wajib diisi.';
-    } else if (!validatePhone(phone)) {
-      newErrors.phone = 'Format nomor telepon tidak valid.';
+    // Cek setiap field yang wajib diisi
+    if (!name) newErrors.name = 'Nama lengkap wajib diisi.';
+    if (!email) newErrors.email = 'Email wajib diisi.';
+    if (!address) newErrors.address = 'Alamat lengkap wajib diisi.';
+    if (!city) newErrors.city = 'Kota wajib diisi.';
+    if (!pincode) newErrors.pincode = 'Kode pos wajib diisi.';
+    if (!phone) newErrors.phone = 'Nomor telepon wajib diisi.';
+
+    if (email && !validateEmail(email)) {
+      newErrors.email = 'Format email tidak valid';
     }
 
+    // Update state errors
     setErrors(newErrors);
+
+    // Jika object newErrors kosong, berarti form valid
     return Object.keys(newErrors).length === 0;
   };
 
   const validateUserAddress = () => {
     if (useNewAddress) {
-      const newErrors = {};
       const { address, city, pincode, phone } = newAddressData;
-
-      if (!address?.trim()) newErrors.new_address = 'Alamat lengkap wajib diisi.';
-      if (!city?.trim()) newErrors.new_city = 'Kota wajib diisi.';
-      if (!pincode?.trim()) newErrors.new_pincode = 'Kode pos wajib diisi.';
-      if (!phone?.trim()) {
-        newErrors.new_phone = 'Nomor telepon wajib diisi.';
-      } else if (!validatePhone(phone)) {
-        newErrors.new_phone = 'Format nomor telepon tidak valid.';
-      }
-
-      setErrors(newErrors);
-      return Object.keys(newErrors).length === 0;
+      return address && city && pincode && phone;
     }
-    return !!selectedAddressId;
+    return selectedAddressId;
   };
 
   const totalCartAmount = cartItems?.cartTotal || 0;
 
-  const handleCheckout = async () => {
-    setCheckoutError(''); // Clear previous errors
-
+  const handleCheckout = () => {
     if (!cartItems?._id) {
       toast({
         title: 'Keranjang tidak ditemukan.',
@@ -166,16 +120,6 @@ function ShoppingCheckout() {
       return;
     }
 
-    if (!cartItems?.items?.length) {
-      toast({
-        title: 'Keranjang kosong',
-        description: 'Tambahkan produk ke keranjang terlebih dahulu.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Validate forms
     if (!user) {
       if (!validateGuestInfo()) {
         toast({
@@ -196,7 +140,6 @@ function ShoppingCheckout() {
       }
     }
 
-    // Prepare order data
     let addressInfo = {};
     let customerName = '';
     let email = '';
@@ -216,14 +159,6 @@ function ShoppingCheckout() {
         addressInfo = newAddressData;
       } else {
         const selectedAddress = addressList.find((addr) => addr._id === selectedAddressId);
-        if (!selectedAddress) {
-          toast({
-            title: 'Alamat tidak valid',
-            description: 'Alamat yang dipilih tidak ditemukan.',
-            variant: 'destructive',
-          });
-          return;
-        }
         addressInfo = {
           address: selectedAddress.address,
           city: selectedAddress.city,
@@ -237,7 +172,7 @@ function ShoppingCheckout() {
     }
 
     const orderData = {
-      userId: user?._id || `guest-${Date.now()}`,
+      userId: user?._id || localStorage.getItem('sessionId') || `guest-${Date.now()}`,
       cartId: cartItems._id,
       cartItems: cartItems.items.map((item) => ({
         productId: item.productId,
@@ -253,54 +188,26 @@ function ShoppingCheckout() {
       email,
     };
 
-    try {
-      const result = await dispatch(createNewOrder(orderData)).unwrap();
-
-      if (result.token && result.orderId) {
-        // Clear any existing tokens and save new ones
-        sessionStorage.removeItem('snapToken');
-        sessionStorage.removeItem('currentOrderId');
-        sessionStorage.setItem('snapToken', result.token);
-        sessionStorage.setItem('currentOrderId', result.orderId);
-
-        toast({
-          title: 'Pesanan berhasil dibuat',
-          description: 'Anda akan diarahkan ke halaman pembayaran.',
-        });
-
-        // Navigate to payment page
-        navigate(`/shop/payment-pending/${result.orderId}`, { replace: true });
+    dispatch(createNewOrder(orderData)).then((res) => {
+      if (res.payload?.token) {
+        // Arahkan ke halaman pembayaran
+        // navigate(`/shop/payment-pending/${res.payload.orderId}`);
+        window.location.href = `/shop/payment-pending/${res.payload.orderId}`;
       } else {
-        throw new Error('Token pembayaran tidak diterima');
+        toast({
+          title: 'Gagal Membuat Pesanan',
+          description:
+            res.error?.message || res.payload?.error || 'Terjadi kesalahan saat membuat pesanan.',
+          variant: 'destructive',
+        });
       }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      const errorMessage =
-        error.message || error.error || 'Terjadi kesalahan saat membuat pesanan.';
-
-      // Handle specific error cases
-      if (errorMessage.includes('sudah berjalan')) {
-        // Extract order ID if available
-        const orderIdMatch = errorMessage.match(/orderId:\s*([a-f0-9]+)/);
-        if (orderIdMatch) {
-          const existingOrderId = orderIdMatch[1];
-          toast({
-            title: 'Checkout Sedang Berjalan',
-            description: 'Melanjutkan ke pembayaran yang sudah ada.',
-          });
-          navigate(`/shop/payment-pending/${existingOrderId}`, { replace: true });
-          return;
-        }
-      }
-
-      setCheckoutError(errorMessage);
-      toast({
-        title: 'Gagal Membuat Pesanan',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
+    });
   };
+
+  // Redirect jika sudah bayar
+  if (orderDetails?.paymentStatus === 'paid') {
+    return <Navigate to="/shop/payment-success" replace />;
+  }
 
   // Check if cart is empty
   if (!cartItems?.items?.length) {
@@ -419,7 +326,7 @@ function ShoppingCheckout() {
                   <Input
                     id="phone"
                     name="phone"
-                    placeholder="contoh: 08123456789"
+                    placeholder="Masukkan nomor telepon"
                     value={guestInfo.phone}
                     onChange={handleGuestInfoChange}
                     required
@@ -444,10 +351,7 @@ function ShoppingCheckout() {
             // Logged in user - Address selection
             <div className="space-y-4">
               {addressLoading ? (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                  <p>Memuat alamat...</p>
-                </div>
+                <div>Loading addresses...</div>
               ) : (
                 <>
                   {/* Existing Addresses */}
@@ -528,11 +432,8 @@ function ShoppingCheckout() {
                             value={newAddressData.address}
                             onChange={handleNewAddressChange}
                             required
-                            className={errors.new_address ? 'border-red-500' : ''}
+                            className={errors.name ? 'border-red-500' : ''}
                           />
-                          {errors.new_address && (
-                            <p className="text-red-500 text-sm mt-1">{errors.new_address}</p>
-                          )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -545,11 +446,8 @@ function ShoppingCheckout() {
                               value={newAddressData.city}
                               onChange={handleNewAddressChange}
                               required
-                              className={errors.new_city ? 'border-red-500' : ''}
+                              className={errors.name ? 'border-red-500' : ''}
                             />
-                            {errors.new_city && (
-                              <p className="text-red-500 text-sm mt-1">{errors.new_city}</p>
-                            )}
                           </div>
                           <div>
                             <Label htmlFor="newPincode">Kode Pos *</Label>
@@ -560,11 +458,8 @@ function ShoppingCheckout() {
                               value={newAddressData.pincode}
                               onChange={handleNewAddressChange}
                               required
-                              className={errors.new_pincode ? 'border-red-500' : ''}
+                              className={errors.name ? 'border-red-500' : ''}
                             />
-                            {errors.new_pincode && (
-                              <p className="text-red-500 text-sm mt-1">{errors.new_pincode}</p>
-                            )}
                           </div>
                         </div>
 
@@ -573,15 +468,12 @@ function ShoppingCheckout() {
                           <Input
                             id="newPhone"
                             name="phone"
-                            placeholder="contoh: 08123456789"
+                            placeholder="Masukkan nomor telepon"
                             value={newAddressData.phone}
                             onChange={handleNewAddressChange}
                             required
-                            className={errors.new_phone ? 'border-red-500' : ''}
+                            className={errors.name ? 'border-red-500' : ''}
                           />
-                          {errors.new_phone && (
-                            <p className="text-red-500 text-sm mt-1">{errors.new_phone}</p>
-                          )}
                         </div>
 
                         <div>

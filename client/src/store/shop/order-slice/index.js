@@ -119,8 +119,6 @@ export const getOrderDetails = createAsyncThunk(
   'orders/fetchDetails',
   async ({ id, isAdmin = false }, { rejectWithValue }) => {
     try {
-      console.log(id);
-
       const url = isAdmin ? `/admin/orders/details/${id}` : `/shop/order/details/${id}`;
       const response = await api.get(url);
       return response.data;
@@ -171,16 +169,6 @@ const orderSlice = createSlice({
         state.orderId = action.payload.orderId;
         sessionStorage.setItem('currentOrderId', action.payload.orderId);
       })
-      .addCase(regenerateSnapToken.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.token = action.payload.token;
-        state.redirectUrl = action.payload.redirectUrl;
-        state.orderId = action.payload.orderId;
-
-        // Simpan juga ke sessionStorage biar persist
-        sessionStorage.setItem('snapToken', action.payload.token);
-        sessionStorage.setItem('currentOrderId', action.payload.orderId);
-      })
       // GET ORDERS BY USER (SHOP)
       .addCase(getAllOrdersByUserId.fulfilled, (state, action) => {
         state.isLoading = false;
@@ -205,6 +193,10 @@ const orderSlice = createSlice({
       .addCase(getOrderDetails.fulfilled, (state, action) => {
         state.isLoading = false;
         state.orderDetails = action.payload.data;
+      })
+      .addCase(regenerateSnapToken.fulfilled, (state, action) => {
+        state.token = action.payload.token; // Simpan token baru di Redux
+        state.isLoading = false;
       })
       // UPDATE STATUS (ADMIN)
       .addCase(updateOrderStatus.fulfilled, (state, action) => {

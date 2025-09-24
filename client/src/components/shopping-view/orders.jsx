@@ -1,102 +1,155 @@
 import { useEffect, useState } from 'react';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Dialog } from '../ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import ShoppingOrderDetailsView from './order-details';
-import { useDispatch, useSelector } from 'react-redux';
-import { getAllOrdersByUserId, getOrderDetails, resetOrderDetails } from '@/store/shop/order-slice';
-import { Badge } from '../ui/badge';
 import { Link } from 'react-router-dom';
 
+// UI Components
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Dialog, DialogContent } from '../ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Badge } from '../ui/badge';
+
+// Store & Utils
+import { getAllOrdersByUserId, getOrderDetails, resetOrderDetails } from '@/store/shop/order-slice';
+import { formatPrice } from '@/utils/currencyFormatters';
+import ShoppingOrderDetailsView from './order-details';
+import { useDispatch, useSelector } from 'react-redux';
+
+// Constants for styling to improve readability and maintainability
+const ORDER_STATUS_STYLES = {
+  confirmed: 'bg-green-600 hover:bg-green-700',
+  rejected: 'bg-red-600 hover:bg-red-700',
+  pending: 'bg-gray-600 hover:bg-gray-700',
+  default: 'bg-black',
+};
+
+const PAYMENT_STATUS_STYLES = {
+  paid: 'bg-blue-600 hover:bg-blue-700',
+  unpaid: 'bg-amber-600 hover:bg-amber-700',
+  failed: 'bg-red-600 hover:bg-red-700',
+  default: 'bg-gray-500',
+};
+
 function ShoppingOrders() {
-  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { userOrderList, orderDetails } = useSelector((state) => state.shopOrder);
 
-  function handleFetchOrderDetails(getId) {
-    console.log('id', getId);
+  // Local state untuk mengontrol dialog
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    dispatch(getOrderDetails({ id: getId, isAdmin: false }));
-  }
-
+  // Fetch all orders when the component mounts or when the user ID changes
   useEffect(() => {
-    dispatch(getAllOrdersByUserId(user?.id));
-  }, [dispatch]);
+    if (user?.id) {
+      dispatch(getAllOrdersByUserId(user.id));
+    }
+  }, [dispatch, user?.id]);
 
+  // Effect untuk membuka dialog ketika orderDetails tersedia
   useEffect(() => {
-    if (orderDetails !== null) setOpenDetailsDialog(true);
+    if (orderDetails && Object.keys(orderDetails).length > 0) {
+      setIsDialogOpen(true);
+    }
   }, [orderDetails]);
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Order History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order ID</TableHead>
-              <TableHead>Order Date</TableHead>
-              <TableHead>Order Status</TableHead>
-              <TableHead>Order Price</TableHead>
-              <TableHead>
-                <span className="sr-only">Details</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {userOrderList && userOrderList.length > 0
-              ? userOrderList.map((orderItem) => (
-                  <TableRow key={orderItem?._id}>
-                    <TableCell>{orderItem?._id}</TableCell>
-                    <TableCell>{orderItem?.orderDate.split('T')[0]}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={`py-1 px-3 ${
-                          orderItem?.orderStatus === 'confirmed'
-                            ? 'bg-green-500'
-                            : orderItem?.orderStatus === 'rejected'
-                            ? 'bg-red-600'
-                            : 'bg-black'
-                        }`}
-                      >
-                        {orderItem?.orderStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>${orderItem?.totalAmount}</TableCell>
-                    <TableCell>
-                      <Dialog
-                        open={openDetailsDialog}
-                        onOpenChange={() => {
-                          setOpenDetailsDialog(false);
-                          console.log(openDetailsDialog);
+  // Handler to fetch details for a specific order
+  const handleFetchOrderDetails = (orderId) => {
+    dispatch(getOrderDetails({ id: orderId, isAdmin: false }));
+  };
 
-                          dispatch(resetOrderDetails());
-                        }}
-                      >
-                        <Button onClick={() => handleFetchOrderDetails(orderItem?._id)}>
-                          View Details
-                        </Button>
-                        <ShoppingOrderDetailsView orderDetails={orderDetails} />
-                      </Dialog>
-                    </TableCell>
-                    {orderItem?.orderStatus === 'pending' && (
-                      <TableCell>
-                        <Link to={`/shop/payment-pending/${orderItem?._id}`}>
-                          <Button>Pembayaran</Button>
-                        </Link>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              : null}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+  // Handler to close the dialog and reset the details in the store
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    // Reset orderDetails setelah dialog tertutup untuk menghindari loop
+    setTimeout(() => {
+      dispatch(resetOrderDetails());
+    }, 200); // Delay sedikit untuk animasi closing
+  };
+
+  const getOrderStatusStyle = (status) =>
+    ORDER_STATUS_STYLES[status] || ORDER_STATUS_STYLES.default;
+  const getPaymentStatusStyle = (status) =>
+    PAYMENT_STATUS_STYLES[status] || PAYMENT_STATUS_STYLES.default;
+
+  // Conditionally render the table body
+  const renderTableBody = () => {
+    if (!userOrderList || userOrderList.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+            You have no order history yet.
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return userOrderList.map((orderItem) => (
+      <TableRow key={orderItem?._id}>
+        <TableCell className="font-medium">{orderItem?._id}</TableCell>
+        <TableCell>{new Date(orderItem?.orderDate).toLocaleDateString()}</TableCell>
+        <TableCell>
+          <Badge className={`py-1 px-3 text-white ${getOrderStatusStyle(orderItem?.orderStatus)}`}>
+            {orderItem?.orderStatus?.toUpperCase()}
+          </Badge>
+        </TableCell>
+        <TableCell className="font-semibold">{formatPrice(orderItem?.totalAmount)}</TableCell>
+        <TableCell>
+          <Badge
+            className={`py-1 px-3 text-white ${getPaymentStatusStyle(orderItem?.paymentStatus)}`}
+          >
+            {orderItem?.paymentStatus?.toUpperCase()}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleFetchOrderDetails(orderItem?._id)}
+          >
+            View Details
+          </Button>
+        </TableCell>
+        <TableCell>
+          {orderItem?.paymentStatus === 'unpaid' && (
+            <Link to={`/shop/payment-pending/${orderItem?._id}`}>
+              <Button size="sm">Pay Now</Button>
+            </Link>
+          )}
+        </TableCell>
+      </TableRow>
+    ));
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Order History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order ID</TableHead>
+                <TableHead>Order Date</TableHead>
+                <TableHead>Order Status</TableHead>
+                <TableHead>Total Price</TableHead>
+                <TableHead>Payment Status</TableHead>
+                <TableHead>Details</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>{renderTableBody()}</TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Dialog for Order Details dengan kontrol state yang lebih baik */}
+      <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          {orderDetails && <ShoppingOrderDetailsView orderDetails={orderDetails} />}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
