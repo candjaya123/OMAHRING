@@ -1,6 +1,6 @@
 import CommonForm from '@/components/common/form';
-import { useToast } from '@/components/ui/use-toast';
 import { loginFormControls } from '@/config';
+import useToast from '@/hooks/useToast';
 import { loginUser } from '@/store/auth-slice';
 import { mergeCart } from '@/store/shop/cart-slice';
 import { useState } from 'react';
@@ -15,7 +15,7 @@ const initialState = {
 function AuthLogin() {
   const [formData, setFormData] = useState(initialState);
   const dispatch = useDispatch();
-  const { toast } = useToast();
+  const toast = useToast();
   const { cartItems } = useSelector((state) => state.shopCart);
   const navigate = useNavigate();
 
@@ -24,7 +24,7 @@ function AuthLogin() {
 
     dispatch(loginUser(formData)).then((data) => {
       if (data?.payload?.success) {
-        toast({ title: data?.payload?.message });
+        toast.toastSuccess('Sukses', 'Login berhasil.');
 
         const sessionId = localStorage.getItem('sessionId');
 
@@ -44,11 +44,12 @@ function AuthLogin() {
             })
           ).then(() => {
             localStorage.removeItem('sessionId');
-            toast({
-              title: confirmMerge
+            toast.toastSuccess(
+              'Sukses',
+              confirmMerge
                 ? 'Keranjang berhasil digabungkan!'
-                : 'Keranjang tamu dihapus. Menggunakan keranjang akun Anda.',
-            });
+                : 'Keranjang tamu dihapus. Menggunakan keranjang akun Anda.'
+            );
             navigate('/');
           });
         } else {
@@ -56,10 +57,7 @@ function AuthLogin() {
           navigate('/');
         }
       } else {
-        toast({
-          title: data?.payload?.message,
-          variant: 'destructive',
-        });
+        toast.toastError('Gagal', 'Login gagal');
       }
     });
   }

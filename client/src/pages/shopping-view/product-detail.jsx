@@ -7,13 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useToast } from '@/components/ui/use-toast';
 import { addToCart, fetchCartItems } from '@/store/shop/cart-slice';
+import useToast from '@/hooks/useToast';
 
 function ProductDetailPage() {
   const { productId } = useParams();
   const dispatch = useDispatch();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const {
     currentProduct,
@@ -46,24 +46,22 @@ function ProductDetailPage() {
       const result = await dispatch(addToCart(cartData));
 
       if (result.payload?.success) {
-        toast({
-          title: 'Produk berhasil ditambahkan ke keranjang!',
-        });
+        toast.toastSuccess('Sukses', 'Produk berhasil ditambahkan ke keranjang!');
+        console.log('Add to cart result:', result.payload);
+
         if (result.payload.data?.sessionId) {
           localStorage.setItem('sessionId', result.payload.data.sessionId);
         } else {
-          toast({
-            title: result.payload?.message || 'Gagal menambah ke keranjang',
-            variant: 'destructive',
-          });
+          toast.toastError('Gagal', 'Gagal mendapatkan sessionId dari server.');
         }
+
         dispatch(fetchCartItems(user?.id || sessionId));
+      } else {
+        // 🔹 Tambahkan ini biar pesan gagal dari server muncul
+        toast.toastError('Gagal', result.payload?.message || 'Gagal menambahkan ke keranjang.');
       }
     } catch (error) {
-      toast({
-        title: error.message || 'Terjadi Kesalahan',
-        variant: 'destructive',
-      });
+      toast.toastError('Error', error.message || 'Terjadi Kesalahan');
     }
   };
 

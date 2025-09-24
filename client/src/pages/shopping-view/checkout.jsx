@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,10 +8,22 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, MapPin, User, Phone } from 'lucide-react';
+import { Plus, MapPin, User, Phone, AlertCircle, ShoppingCart } from 'lucide-react';
 import { createNewOrder } from '@/store/shop/order-slice';
 import { fetchAllAddresses } from '@/store/shop/address-slice';
 import img from '../../assets/account.jpg';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { formatPrice } from '@/utils/currencyFormatters';
+import useToast from '@/hooks/useToast';
 
 function ShoppingCheckout() {
   const { cartItems } = useSelector((state) => state.shopCart); // Fixed selector name
@@ -21,7 +32,7 @@ function ShoppingCheckout() {
   const { addressList, isLoading: addressLoading } = useSelector((state) => state.shopAddress); // Fixed selector name
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { toast } = useToast();
+  const toast = useToast();
 
   // State untuk alamat
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -111,31 +122,21 @@ function ShoppingCheckout() {
   const totalCartAmount = cartItems?.cartTotal || 0;
 
   const handleCheckout = () => {
+    console.log('checkout');
+
     if (!cartItems?._id) {
-      toast({
-        title: 'Keranjang tidak ditemukan.',
-        description: 'Coba muat ulang halaman.',
-        variant: 'destructive',
-      });
+      toast.toastError('Gagal', 'Keranjang tidak ditemukan.');
       return;
     }
 
     if (!user) {
       if (!validateGuestInfo()) {
-        toast({
-          title: 'Data Belum Lengkap',
-          description: 'Harap isi semua field yang diperlukan.',
-          variant: 'destructive',
-        });
+        toast.toastError('Data Belum Lengkap', 'Harap isi semua field yang diperlukan.');
         return;
       }
     } else {
       if (!validateUserAddress()) {
-        toast({
-          title: 'Alamat Belum Dipilih',
-          description: 'Pilih alamat pengiriman atau isi alamat baru.',
-          variant: 'destructive',
-        });
+        toast.toastError('Alamat Belum Dipilih', 'Pilih alamat pengiriman atau isi alamat baru.');
         return;
       }
     }
@@ -190,26 +191,21 @@ function ShoppingCheckout() {
 
     dispatch(createNewOrder(orderData)).then((res) => {
       if (res.payload?.token) {
-        // Arahkan ke halaman pembayaran
-        // navigate(`/shop/payment-pending/${res.payload.orderId}`);
+        toast.toastSuccess('Sukses', 'Pesanan berhasil dibuat.');
         window.location.href = `/shop/payment-pending/${res.payload.orderId}`;
       } else {
-        toast({
-          title: 'Gagal Membuat Pesanan',
-          description:
-            res.error?.message || res.payload?.error || 'Terjadi kesalahan saat membuat pesanan.',
-          variant: 'destructive',
-        });
+        toast.toastError(
+          'Gagal',
+          res.error?.message || res.payload?.error || 'Terjadi kesalahan saat membuat pesanan.'
+        );
       }
     });
   };
 
-  // Redirect jika sudah bayar
   if (orderDetails?.paymentStatus === 'paid') {
     return <Navigate to="/shop/payment-success" replace />;
   }
 
-  // Check if cart is empty
   if (!cartItems?.items?.length) {
     return (
       <div className="p-8 text-center">
@@ -552,13 +548,84 @@ function ShoppingCheckout() {
                 </span>
               </div>
 
-              <Button
-                onClick={handleCheckout}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-lg py-6"
-                disabled={isLoading || !cartItems?._id || cartItems.items.length === 0}
-              >
-                {isLoading ? 'Memproses...' : 'Bayar Sekarang'}
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-lg py-6 rounded-lg shadow-md hover:shadow-lg transition-all"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Memproses...' : 'Bayar Sekarang'}
+                  </Button>
+                </DialogTrigger>
+
+                <DialogContent className="sm:max-w-md p-0 rounded-xl shadow-2xl border-0">
+                  <DialogHeader className="p-6 pb-4 border-b">
+                    <DialogTitle className="text-2xl font-bold flex items-center gap-3 text-gray-800">
+                      <ShoppingCart className="w-6 h-6 text-orange-500" />
+                      Konfirmasi Pesanan Anda
+                    </DialogTitle>
+                    <DialogDescription className="pt-1 text-gray-500">
+                      Harap periksa kembali detail pesanan Anda sebelum melanjutkan ke pembayaran.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="px-6 space-y-4">
+                    {/* Ringkasan Pesanan */}
+                    <div className="max-h-[250px] overflow-y-auto space-y-3 pr-2 -mr-2">
+                      {cartItems?.items?.map((item) => (
+                        <div
+                          key={`${item.productId}-${item.variant.name}`}
+                          className="flex justify-between items-start text-sm py-3 px-3 rounded-lg border bg-gray-50 hover:bg-gray-100 transition"
+                        >
+                          <div className="flex-1 mr-4">
+                            <p className="font-medium text-gray-800">{item.title}</p>
+                            <p className="text-gray-500 text-xs">
+                              {item.variant.name} (x{item.quantity})
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold text-gray-900">
+                              {formatPrice(
+                                (item.variant.salePrice > 0
+                                  ? item.variant.salePrice
+                                  : item.variant.price) * item.quantity
+                              )}
+                            </p>
+                            {item.variant.salePrice > 0 && (
+                              <p className="text-xs text-gray-400 line-through">
+                                {formatPrice(item.variant.price * item.quantity)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator />
+
+                    {/* Total */}
+                    <div className="flex justify-between items-center font-semibold text-lg">
+                      <span>Total Pembayaran</span>
+                      <span className="text-orange-600">{formatPrice(totalCartAmount)}</span>
+                    </div>
+                  </div>
+
+                  <DialogFooter className="bg-gray-50 px-6 py-4 rounded-b-xl flex flex-col sm:flex-row sm:justify-end gap-3">
+                    <DialogClose asChild>
+                      <Button variant="outline" className="w-full sm:w-auto">
+                        Batal
+                      </Button>
+                    </DialogClose>
+                    <Button
+                      onClick={handleCheckout}
+                      className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white shadow-md"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Memproses...' : 'Lanjutkan Pembayaran'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               <div className="text-center text-xs text-gray-500 mt-3">
                 Dengan melanjutkan, Anda menyetujui syarat dan ketentuan

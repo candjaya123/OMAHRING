@@ -31,6 +31,7 @@ import AuthedGuard from './components/guards/authed-guard';
 import ProductDetailPage from './pages/shopping-view/product-detail';
 import { v4 as uuidv4 } from 'uuid';
 import PaymentPendingPage from './pages/shopping-view/payment-pending';
+import { ToastContainer } from 'react-toastify';
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
@@ -120,6 +121,7 @@ function App() {
         <Route path="/unauth-page" element={<UnauthPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <ToastContainer />
     </div>
   );
 }
