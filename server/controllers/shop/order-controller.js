@@ -101,7 +101,8 @@ const createOrder = async (req, res) => {
         });
       }
 
-      const unitPrice = toInt(variant.salePrice ?? variant.price);
+      const unitPrice = toInt(variant.salePrice || variant.price);
+
       expectedTotal += unitPrice * toInt(item.quantity);
 
       normalizedItems.push({
@@ -122,7 +123,9 @@ const createOrder = async (req, res) => {
     if (toInt(totalAmount) !== expectedTotal) {
       return res.status(400).json({
         success: false,
-        message: `Total amount tidak sesuai. FE=${toInt(totalAmount)}, Server=${expectedTotal}`,
+        message: `Total amount tidak sesuai. FE=${toInt(
+          totalAmount
+        )}, Server=${expectedTotal}, normalized${normalizedItems}`,
       });
     }
 
@@ -193,6 +196,13 @@ const createOrder = async (req, res) => {
       }
     );
 
+    // Hapus cart setelah order dibuat
+    try {
+      await Cart.findByIdAndDelete(cartId);
+    } catch (e) {
+      console.error(`Delete cart ${cartId} error:`, e.message);
+    }
+
     return res.status(201).json({
       success: true,
       token: transaction.token,
@@ -214,7 +224,6 @@ const handleNotification = async (req, res) => {
   try {
     // Midtrans kirim JSON ke endpoint ini
     const body = req.body;
-    console.log('Midtrans Notification:', body);
 
     // (Opsional) pakai SDK untuk normalize
     const notificationJson = await snap.transaction.notification(body);
@@ -288,7 +297,6 @@ const handleNotification = async (req, res) => {
     order.orderUpdateDate = new Date();
     await order.save();
 
-    console.log(`Order ${order_id} -> ${order.paymentStatus}/${order.orderStatus}`);
     return res.status(200).send('OK');
   } catch (error) {
     console.error('HandleNotification Error:', error);
@@ -298,12 +306,6 @@ const handleNotification = async (req, res) => {
 
 // ==== helper: fulfill order ketika sudah paid ====
 async function fulfillPaidOrder(orderDoc) {
-  console.log('=== FULFILL PAID ORDER START ===');
-  console.log('Order ID:', orderDoc._id);
-  console.log('Initial Payment Status:', orderDoc.paymentStatus);
-  console.log('Initial Order Status:', orderDoc.orderStatus);
-  console.log('Cart Items:', orderDoc.cartItems);
-
   // Idempotent: hanya proses jika sebelumnya belum paid/confirmed
   if (orderDoc.paymentStatus === 'paid' || orderDoc.orderStatus === 'confirmed') {
     console.log('Order sudah diproses sebelumnya, keluar dari fungsi.');
@@ -312,9 +314,6 @@ async function fulfillPaidOrder(orderDoc) {
 
   // Kurangi stok tiap item secara atomik
   for (const item of orderDoc.cartItems) {
-    console.log(`\nMemproses item: ${item.title} - ${item.variantName}`);
-    console.log(`Target Qty: ${item.quantity}`);
-
     const res = await Product.updateOne(
       {
         _id: item.productId,
@@ -325,8 +324,6 @@ async function fulfillPaidOrder(orderDoc) {
         $inc: { 'variants.$.totalStock': -item.quantity },
       }
     );
-
-    console.log('Update Result:', res);
 
     if (!res.matchedCount || !res.modifiedCount) {
       console.error(
@@ -355,10 +352,6 @@ async function fulfillPaidOrder(orderDoc) {
   if (orderDoc.orderStatus !== 'needs_review') {
     orderDoc.orderStatus = 'confirmed';
   }
-
-  console.log('Final Payment Status:', orderDoc.paymentStatus);
-  console.log('Final Order Status:', orderDoc.orderStatus);
-  console.log('=== FULFILL PAID ORDER END ===\n');
 }
 
 // ==== GET ORDERS BY USER ====
@@ -398,33 +391,75 @@ const getOrderDetails = async (req, res) => {
   }
 };
 
-async function reduceStockAtomic(orderDoc) {
-  for (const item of orderDoc.cartItems) {
-    const res = await Product.updateOne(
-      {
-        _id: item.productId,
-        'variants.name': item.variantName, // pakai name dulu
-        'variants.totalStock': { $gte: item.quantity }, // ganti ke "variants.stock" jika field kamu pakai itu
-      },
-      { $inc: { 'variants.$.totalStock': -item.quantity } } // ganti path jika perlu
-    );
-
-    if (!res.matchedCount || !res.modifiedCount) {
-      console.error('[Stock] gagal reduce', {
-        productId: item.productId,
-        variantName: item.variantName,
-        qty: item.quantity,
-        mongo: res,
-      });
-      // tandai agar bisa direview manual, tapi jangan fail pembayaran
-      if (orderDoc.orderStatus !== 'needs_review') orderDoc.orderStatus = 'needs_review';
+// ==== REGENERATE SNAP TOKEN UNTUK ORDER PENDING ====
+const regenerateSnapToken = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID diperlukan' });
     }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+    }
+
+    // Hanya izinkan regenerate kalau status masih unpaid/pending
+    if (!['unpaid', 'pending'].includes(order.paymentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Order ${orderId} tidak bisa regenerate token, status sekarang: ${order.paymentStatus}`,
+      });
+    }
+
+    // Buat parameter baru untuk Snap
+    const parameter = {
+      transaction_details: {
+        order_id: order._id.toString(),
+        gross_amount: order.totalAmount,
+      },
+      item_details: order.cartItems.map((it) => ({
+        id: it.productId.toString(),
+        price: it.price,
+        quantity: it.quantity,
+        name: `${it.title} - ${it.variantName}`,
+      })),
+      customer_details: {
+        first_name: order.customerName,
+        email: order.email,
+        phone: order.addressInfo?.phone,
+      },
+      enabled_payments: ['credit_card', 'gopay', 'qris', 'shopeepay', 'echannel', 'bank_transfer'],
+      credit_card: { secure: true },
+      callbacks: {
+        finish: `${process.env.FRONTEND_URL}/shop/payment-success`,
+        error: `${process.env.FRONTEND_URL}/shop/checkout`,
+        pending: `${process.env.FRONTEND_URL}/shop/payment-pending`,
+      },
+      expiry: { unit: 'minutes', duration: 120 }, // 2 jam
+    };
+
+    const transaction = await snap.createTransaction(parameter);
+
+    return res.status(200).json({
+      success: true,
+      token: transaction.token,
+      redirectUrl: transaction.redirect_url,
+      orderId: order._id,
+    });
+  } catch (error) {
+    console.error('RegenerateSnapToken Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server: ' + error.message,
+    });
   }
-}
+};
 
 module.exports = {
   createOrder,
   handleNotification,
   getAllOrdersByUser,
   getOrderDetails,
+  regenerateSnapToken,
 };

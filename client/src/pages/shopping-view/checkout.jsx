@@ -9,16 +9,15 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, MapPin, User, Mail, Phone } from 'lucide-react';
-import { createNewOrder, resetOrderState } from '@/store/shop/order-slice';
+import { Plus, MapPin, User, Phone } from 'lucide-react';
+import { createNewOrder } from '@/store/shop/order-slice';
 import { fetchAllAddresses } from '@/store/shop/address-slice';
-import { clearCart } from '@/store/shop/cart-slice';
 import img from '../../assets/account.jpg';
 
 function ShoppingCheckout() {
   const { cartItems } = useSelector((state) => state.shopCart); // Fixed selector name
   const { user } = useSelector((state) => state.auth);
-  const { token, orderId, isLoading, orderDetails } = useSelector((state) => state.shopOrder);
+  const { isLoading, orderDetails } = useSelector((state) => state.shopOrder);
   const { addressList, isLoading: addressLoading } = useSelector((state) => state.shopAddress); // Fixed selector name
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -26,7 +25,7 @@ function ShoppingCheckout() {
 
   // State untuk alamat
   const [selectedAddressId, setSelectedAddressId] = useState('');
-  const [useNewAddress, setUseNewAddress] = useState(false);
+  const [useNewAddress, setUseNewAddress] = useState(true);
   const [newAddressData, setNewAddressData] = useState({
     address: '',
     city: '',
@@ -61,48 +60,6 @@ function ShoppingCheckout() {
       setSelectedAddressId(defaultAddress._id);
     }
   }, [addressList, selectedAddressId]);
-
-  // Midtrans integration
-  useEffect(() => {
-    if (token) {
-      const script = document.createElement('script');
-      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
-      script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
-      script.async = true;
-      document.body.appendChild(script);
-
-      script.onload = () => {
-        window.snap.pay(token, {
-          onSuccess: function (result) {
-            toast({ title: 'Pembayaran Berhasil!', description: 'Pesanan Anda sedang diproses.' });
-            sessionStorage.removeItem('currentOrderId');
-            dispatch(clearCart());
-            dispatch(resetOrderState());
-            navigate('/shop/account');
-          },
-          onPending: function (result) {
-            toast({
-              title: 'Pembayaran Tertunda',
-              description: 'Silakan selesaikan pembayaran Anda.',
-            });
-          },
-          onError: function (result) {
-            toast({ title: 'Pembayaran Gagal', variant: 'destructive' });
-          },
-          onClose: function () {
-            toast({ title: 'Jendela Pembayaran Ditutup', variant: 'destructive' });
-            dispatch(resetOrderState());
-          },
-        });
-      };
-
-      return () => {
-        if (document.body.contains(script)) {
-          document.body.removeChild(script);
-        }
-      };
-    }
-  }, [token, dispatch, toast, navigate]);
 
   const handleNewAddressChange = (e) => {
     const { name, value } = e.target;
@@ -163,7 +120,6 @@ function ShoppingCheckout() {
       return;
     }
 
-    // Validasi berdasarkan status login
     if (!user) {
       if (!validateGuestInfo()) {
         toast({
@@ -184,13 +140,11 @@ function ShoppingCheckout() {
       }
     }
 
-    // Prepare order data
     let addressInfo = {};
     let customerName = '';
     let email = '';
 
     if (!user) {
-      // Guest checkout
       addressInfo = {
         address: guestInfo.address,
         city: guestInfo.city,
@@ -201,7 +155,6 @@ function ShoppingCheckout() {
       customerName = guestInfo.name;
       email = guestInfo.email;
     } else {
-      // Logged in user
       if (useNewAddress) {
         addressInfo = newAddressData;
       } else {
@@ -219,7 +172,7 @@ function ShoppingCheckout() {
     }
 
     const orderData = {
-      userId: user?._id || localStorage.getItem('cartSessionId') || `guest-${Date.now()}`,
+      userId: user?._id || localStorage.getItem('sessionId') || `guest-${Date.now()}`,
       cartId: cartItems._id,
       cartItems: cartItems.items.map((item) => ({
         productId: item.productId,
@@ -235,7 +188,24 @@ function ShoppingCheckout() {
       email,
     };
 
-    dispatch(createNewOrder(orderData));
+    // potongan di handleCheckout success
+    dispatch(createNewOrder(orderData)).then((res) => {
+      if (res.payload?.token) {
+        // simpan ke Redux dan sessionStorage
+        sessionStorage.setItem('snapToken', res.payload.token);
+        sessionStorage.setItem('currentOrderId', res.payload.orderId);
+
+        // langsung redirect ke payment page
+        navigate('/shop/payment-pending');
+      } else if (res.error || res.payload?.error) {
+        toast({
+          title: 'Gagal Membuat Pesanan',
+          description:
+            res.error?.message || res.payload?.error || 'Terjadi kesalahan saat membuat pesanan.',
+          variant: 'destructive',
+        });
+      }
+    });
   };
 
   // Redirect jika sudah bayar

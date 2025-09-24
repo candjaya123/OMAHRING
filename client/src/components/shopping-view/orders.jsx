@@ -7,6 +7,7 @@ import ShoppingOrderDetailsView from './order-details';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllOrdersByUserId, getOrderDetails, resetOrderDetails } from '@/store/shop/order-slice';
 import { Badge } from '../ui/badge';
+import { Link } from 'react-router-dom';
 
 function ShoppingOrders() {
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
@@ -82,6 +83,13 @@ function ShoppingOrders() {
                         <ShoppingOrderDetailsView orderDetails={orderDetails} />
                       </Dialog>
                     </TableCell>
+                    {orderItem?.orderStatus === 'pending' && (
+                      <TableCell>
+                        <Link to={`/shop/payment-pending`}>
+                          <Button>Pembayaran</Button>
+                        </Link>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               : null}

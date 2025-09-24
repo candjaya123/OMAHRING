@@ -30,6 +30,7 @@ import AdminManagementView from './pages/admin-view/manage-admins'; // 🔹 1. I
 import AuthedGuard from './components/guards/authed-guard';
 import ProductDetailPage from './pages/shopping-view/product-detail';
 import { v4 as uuidv4 } from 'uuid';
+import PaymentPendingPage from './pages/shopping-view/payment-pending';
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
@@ -111,6 +112,7 @@ function App() {
           <Route path="checkout" element={<ShoppingCheckout />} />
           <Route element={<AuthedGuard />}>
             <Route path="payment-success" element={<PaymentSuccessPage />} />
+            <Route path="payment-pending" element={<PaymentPendingPage />} />
             <Route path="account" element={<ShoppingAccount />} />
           </Route>
         </Route>

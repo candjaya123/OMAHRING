@@ -40,7 +40,7 @@ export const createNewOrder = createAsyncThunk(
       const response = await api.post('/shop/order/create', orderData);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || 'Gagal membuat pesanan');
+      return rejectWithValue(err.response?.message || 'Gagal membuat pesanan');
     }
   }
 );
@@ -130,6 +130,18 @@ export const getOrderDetails = createAsyncThunk(
   }
 );
 
+export const regenerateSnapToken = createAsyncThunk(
+  'orders/regenerateSnapToken',
+  async (orderId, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/shop/order/${orderId}/regenerate-token`);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || 'Gagal regenerate Snap token');
+    }
+  }
+);
+
 // =============================
 // SLICE
 // =============================
@@ -157,6 +169,16 @@ const orderSlice = createSlice({
         state.token = action.payload.token;
         state.redirectUrl = action.payload.redirect_url;
         state.orderId = action.payload.orderId;
+        sessionStorage.setItem('currentOrderId', action.payload.orderId);
+      })
+      .addCase(regenerateSnapToken.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.token = action.payload.token;
+        state.redirectUrl = action.payload.redirectUrl;
+        state.orderId = action.payload.orderId;
+
+        // Simpan juga ke sessionStorage biar persist
+        sessionStorage.setItem('snapToken', action.payload.token);
         sessionStorage.setItem('currentOrderId', action.payload.orderId);
       })
       // GET ORDERS BY USER (SHOP)
