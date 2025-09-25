@@ -34,17 +34,15 @@ function ShoppingOrders() {
   const { user } = useSelector((state) => state.auth);
   const { userOrderList, orderDetails } = useSelector((state) => state.shopOrder);
 
-  // Local state untuk mengontrol dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const sessionId = localStorage.getItem('sessionId');
 
-  // Fetch all orders when the component mounts or when the user ID changes
   useEffect(() => {
-    if (user?.id) {
-      dispatch(getAllOrdersByUserId(user.id));
+    if (user?.id || sessionId) {
+      dispatch(getAllOrdersByUserId(user?.id || sessionId));
     }
   }, [dispatch, user?.id]);
 
-  // Effect untuk membuka dialog ketika orderDetails tersedia
   useEffect(() => {
     if (orderDetails && Object.keys(orderDetails).length > 0) {
       setIsDialogOpen(true);

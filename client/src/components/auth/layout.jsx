@@ -1,12 +1,12 @@
-import { ChartNoAxesCombined } from 'lucide-react';
 import { Link, Outlet } from 'react-router-dom';
+import logoOmahring from '@/assets/logo-omahring.png';
 
 function AuthLayout() {
   return (
     <div className="flex min-h-screen w-full">
       <div className="fixed top-4 left-6 z-10">
-        <Link to="/" className="flex items-center gap-2">
-          <ChartNoAxesCombined className="text-orange-500" size={30} />
+        <Link to="/" className="flex items-center">
+          <img src={logoOmahring} alt="Omahring" className="h-8" />
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 lg:text-white">
             Omahring
           </h1>

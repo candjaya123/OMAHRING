@@ -111,11 +111,9 @@ function App() {
           <Route path="membership" element={<MembershipPage />} />
           <Route path="product/:productId" element={<ProductDetailPage />} />
           <Route path="checkout" element={<ShoppingCheckout />} />
-          <Route element={<AuthedGuard />}>
-            <Route path="payment-success" element={<PaymentSuccessPage />} />
-            <Route path="payment-pending/:orderId" element={<PaymentPendingPage />} />
-            <Route path="account" element={<ShoppingAccount />} />
-          </Route>
+          <Route path="payment-success" element={<PaymentSuccessPage />} />
+          <Route path="payment-pending/:orderId" element={<PaymentPendingPage />} />
+          <Route path="account" element={<ShoppingAccount />} />
         </Route>
 
         <Route path="/unauth-page" element={<UnauthPage />} />

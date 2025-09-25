@@ -1,71 +1,71 @@
 import {
   BadgeCheck,
-  ChartNoAxesCombined,
   LayoutDashboard,
   ShoppingBasket,
   Users,
   TicketPercent,
   FileText, // 🔹 Impor ikon baru
-  UserCog,  // 🔹 Impor ikon baru
-} from "lucide-react";
-import { Fragment } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux"; // 🔹 Impor useSelector
-import { Sheet, SheetContent } from "../ui/sheet";
+  UserCog, // 🔹 Impor ikon baru
+} from 'lucide-react';
+import { Fragment } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux'; // 🔹 Impor useSelector
+import { Sheet, SheetContent } from '../ui/sheet';
+import logoOmahring from '@/assets/logo-omahring.png';
 
 // =================================================================
 // Data Menu Sidebar dengan Hak Akses (Roles)
 // =================================================================
 const adminSidebarMenuItems = [
   {
-    id: "dashboard",
-    label: "Dasbor",
-    path: "/admin/dashboard",
+    id: 'dashboard',
+    label: 'Dasbor',
+    path: '/admin/dashboard',
     icon: <LayoutDashboard size={20} />,
-    roles: ["admin", "manager"], // 👈 Bisa diakses oleh admin & manager
+    roles: ['admin', 'manager'], // 👈 Bisa diakses oleh admin & manager
   },
   {
-    id: "products",
-    label: "Produk",
-    path: "/admin/products",
+    id: 'products',
+    label: 'Produk',
+    path: '/admin/products',
     icon: <ShoppingBasket size={20} />,
-    roles: ["admin", "manager"],
+    roles: ['admin', 'manager'],
   },
   {
-    id: "orders",
-    label: "Pesanan",
-    path: "/admin/orders",
+    id: 'orders',
+    label: 'Pesanan',
+    path: '/admin/orders',
     icon: <BadgeCheck size={20} />,
-    roles: ["admin", "manager"],
+    roles: ['admin', 'manager'],
   },
   {
-    id: "customers",
-    label: "Pelanggan",
-    path: "/admin/customers",
+    id: 'customers',
+    label: 'Pelanggan',
+    path: '/admin/customers',
     icon: <Users size={20} />,
-    roles: ["admin", "manager"],
+    roles: ['admin', 'manager'],
   },
   {
-    id: "promos",
-    label: "Promo",
-    path: "/admin/promos",
+    id: 'promos',
+    label: 'Promo',
+    path: '/admin/promos',
     icon: <TicketPercent size={20} />,
-    roles: ["admin", "manager"],
+    roles: ['admin', 'manager'],
   },
   // 🔹 MENU BARU KHUSUS MANAGER 🔹
   {
-    id: "reports",
-    label: "Laporan",
-    path: "/admin/reports",
+    id: 'reports',
+    label: 'Laporan',
+    path: '/admin/reports',
     icon: <FileText size={20} />,
-    roles: ["manager"], // 👈 Hanya bisa diakses oleh manager
+    roles: ['manager'], // 👈 Hanya bisa diakses oleh manager
   },
   {
-    id: "admins",
-    label: "Admin",
-    path: "/admin/manage-admins",
+    id: 'admins',
+    label: 'Admin',
+    path: '/admin/manage-admins',
     icon: <UserCog size={20} />,
-    roles: ["manager"], // 👈 Hanya bisa diakses oleh manager
+    roles: ['manager'], // 👈 Hanya bisa diakses oleh manager
   },
 ];
 
@@ -86,19 +86,17 @@ function SidebarContent({ setOpen }) {
   }
 
   // 🔹 Filter menu berdasarkan peran (role) pengguna
-  const visibleMenuItems = adminSidebarMenuItems.filter((item) =>
-    item.roles.includes(user?.role)
-  );
+  const visibleMenuItems = adminSidebarMenuItems.filter((item) => item.roles.includes(user?.role));
 
   return (
     <div className="flex flex-col h-full">
       <div
-        onClick={() => handleNavigate("/admin/dashboard")}
-        className="flex cursor-pointer items-center gap-2 border-b pb-6"
+        onClick={() => handleNavigate('/admin/dashboard')}
+        className="flex cursor-pointer items-center border-b pb-6"
       >
-        <ChartNoAxesCombined className="text-orange-500" size={30} />
+        <img src={logoOmahring} alt="Omahring" className="h-8" />
         <h1 className="text-xl font-bold tracking-tight">
-          omahring<span className="text-gray-400 font-light">.admin</span>
+          Omahring<span className="text-gray-400 font-light">.admin</span>
         </h1>
       </div>
 
@@ -114,8 +112,8 @@ function SidebarContent({ setOpen }) {
                 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200
                 ${
                   isActive
-                    ? "bg-orange-500 text-white shadow-sm"
-                    : "text-gray-600 hover:bg-gray-100"
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }
               `}
             >

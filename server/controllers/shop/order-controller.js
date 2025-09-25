@@ -56,9 +56,13 @@ const createOrder = async (req, res) => {
     let user;
     if (String(userId).startsWith('guest-')) {
       user = await User.findOne({ email });
+      if (user) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'Email sudah terdaftar, silakan login.' });
+      }
       if (!user) {
         user = new User({
-          username: customerName, // fallback ke field yang kamu pakai sekarang
           userName: customerName, // jika schema lama masih pakai userName
           email,
           role: 'user',
@@ -208,6 +212,7 @@ const createOrder = async (req, res) => {
       token: transaction.token,
       redirectUrl: transaction.redirect_url,
       orderId: newOrder._id,
+      userId: user._id,
       message: 'Pesanan berhasil dibuat',
     });
   } catch (error) {

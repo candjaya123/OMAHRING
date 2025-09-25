@@ -167,6 +167,7 @@ const orderSlice = createSlice({
         state.token = action.payload.token;
         state.redirectUrl = action.payload.redirect_url;
         state.orderId = action.payload.orderId;
+        localStorage.setItem('sessionId', action.payload.userId);
         sessionStorage.setItem('currentOrderId', action.payload.orderId);
       })
       // GET ORDERS BY USER (SHOP)

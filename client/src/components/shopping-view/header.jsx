@@ -1,4 +1,4 @@
-import { Bird, LayoutDashboard, LogOut, Menu, ShoppingCart, UserCog } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, ShoppingCart, User, UserCog } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
 import { Button } from '../ui/button';
@@ -18,6 +18,7 @@ import UserCartWrapper from './cart-wrapper';
 import { useEffect, useState } from 'react';
 import { fetchCartItems } from '@/store/shop/cart-slice';
 import { v4 as uuidv4 } from 'uuid';
+import logoOmahring from '@/assets/logo-omahring.png';
 
 function MenuItems() {
   const navigate = useNavigate();
@@ -136,6 +137,23 @@ function HeaderRightContent() {
           </span>
           <span className="sr-only">Keranjang</span>
         </Button>
+        {!user && (
+          <div className="flex flex-col lg:hidden items-start gap-4">
+            <Link to="/shop/account">
+              <User className="w-6 h-6" />
+            </Link>
+            <Link to="/auth/login">
+              <button className="cursor-pointer px-4 py-2 text-orange-500 bg-white border border-orange-500 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
+                <p className="p2-b">Masuk</p>
+              </button>
+            </Link>
+            <Link to="/auth/register">
+              <button className="cursor-pointer px-4 py-2 text-white bg-orange-500 hover:bg-orange-500/80 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
+                <p className="p2-b">Daftar</p>
+              </button>
+            </Link>
+          </div>
+        )}
         <UserCartWrapper setOpenCartSheet={setOpenCartSheet} cartItems={cartItems?.items || []} />
       </Sheet>
 
@@ -188,7 +206,10 @@ function HeaderRightContent() {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-4">
+          <Link to="/shop/account">
+            <User className="w-6 h-6" />
+          </Link>
           <Link to="/auth/login">
             <button className="cursor-pointer px-4 py-2 text-orange-500 bg-white border border-orange-500 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
               <p className="p2-b">Masuk</p>
@@ -209,8 +230,8 @@ function ShoppingHeader() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/shop/home" className="flex items-center gap-2">
-          <Bird className="h-8 w-8 text-orange-500" />
+        <Link to="/shop/home" className="flex items-center">
+          <img src={logoOmahring} alt="Omahring" className="h-8" />
           <span className="font-bold text-xl text-gray-800">Omahring</span>
         </Link>
         <div className="hidden lg:flex lg:items-center lg:gap-6">
