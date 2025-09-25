@@ -27,7 +27,6 @@ import BlogPage from './pages/shopping-view/blog';
 import MembershipPage from './pages/shopping-view/membership'; // 🔹 1. Impor halaman baru
 import AdminReportsView from './pages/admin-view/reports'; // 🔹 1. Impor halaman laporan
 import AdminManagementView from './pages/admin-view/manage-admins'; // 🔹 1. Impor halaman baru
-import AuthedGuard from './components/guards/authed-guard';
 import ProductDetailPage from './pages/shopping-view/product-detail';
 import { v4 as uuidv4 } from 'uuid';
 import PaymentPendingPage from './pages/shopping-view/payment-pending';

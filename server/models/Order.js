@@ -6,9 +6,9 @@ const OrderItemSchema = new Schema(
     productId: { type: Types.ObjectId, ref: 'Product', required: true },
     title: { type: String, required: true },
     image: { type: String },
-    price: { type: Number, required: true }, // integer Rupiah
+    price: { type: Number, required: true },
     quantity: { type: Number, required: true, min: 1 },
-    variantName: { type: String, required: true }, // cocok dgn Product.variants[].name
+    variantName: { type: String, required: true },
   },
   { _id: false }
 );
@@ -17,7 +17,7 @@ const AddressInfoSchema = new Schema(
   {
     address: String,
     city: String,
-    pincode: String, // kompatibel dgn body kamu
+    pincode: String,
     phone: String,
     notes: String,
   },
@@ -26,13 +26,13 @@ const AddressInfoSchema = new Schema(
 
 const MidtransSchema = new Schema(
   {
-    orderId: String, // sama dgn _id toString()
+    orderId: String,
     transactionId: String,
     transactionStatus: String,
     fraudStatus: String,
     paymentType: String,
     statusCode: String,
-    grossAmount: String, // simpan apa adanya dari Midtrans (string)
+    grossAmount: String,
     signatureKey: String,
     rawNotification: Schema.Types.Mixed,
   },
@@ -49,16 +49,33 @@ const OrderSchema = new Schema(
     cartItems: { type: [OrderItemSchema], required: true },
     addressInfo: { type: AddressInfoSchema },
 
-    totalAmount: { type: Number, required: true, min: 0 }, // integer Rupiah (server-side verified)
+    totalAmount: { type: Number, required: true, min: 0 },
     orderStatus: {
       type: String,
-      enum: ['pending', 'confirmed', 'cancelled', 'expired', 'challenge', 'needs_review'],
+      // enum: ['pending', 'confirmed', 'cancelled', 'expired', 'challenge', 'needs_review'],
+      enum: [
+        'pending', // baru dibuat
+        'confirmed', // sudah dibayar / valid
+        'processing', // sedang diproses
+        'shipped', // dalam perjalanan
+        'delivered', // sampai ke customer
+        'cancelled', // dibatalkan
+        'expired', // kadaluarsa
+      ],
       default: 'pending',
       index: true,
     },
     paymentStatus: {
       type: String,
-      enum: ['unpaid', 'pending', 'paid', 'failed', 'refund'],
+      // enum: ['unpaid', 'pending', 'paid', 'failed', 'refund'],
+      enum: [
+        'unpaid', // belum mulai transaksi
+        'pending', // sedang menunggu pembayaran
+        'paid', // settlement / capture
+        'failed', // deny / cancel / expire
+        'refund', // refund / partial_refund
+        'chargeback', // chargeback
+      ],
       default: 'unpaid',
       index: true,
     },

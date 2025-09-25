@@ -1,142 +1,149 @@
 import { useState } from 'react';
-import CommonForm from '../common/form';
-import { DialogContent } from '../ui/dialog';
-import { Label } from '../ui/label';
-import { Separator } from '../ui/separator';
-import { Badge } from '../ui/badge';
-import { useDispatch, useSelector } from 'react-redux';
 import {
-  getAllOrdersForAdmin,
-  getOrderDetailsForAdmin,
-  updateOrderStatus,
-} from '@/store/admin/order-slice';
-import { useToast } from '../ui/use-toast';
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { formatPrice } from '@/utils/currencyFormatters';
+import { getOrderStatus, ORDER_STATUS_OPTIONS } from '@/constant/order-status';
+import { getPaymentStatus } from '@/constant/payment-status';
 
-const initialFormData = {
-  status: '',
-};
+export function AdminOrderDetailsDialog({ orderDetails, onUpdateStatus, isLoading }) {
+  const [newStatus, setNewStatus] = useState(orderDetails?.orderStatus);
 
-function AdminOrderDetailsView({ orderDetails }) {
-  const [formData, setFormData] = useState(initialFormData);
-  const { user } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
-  const { toast } = useToast();
-
-  console.log(orderDetails, 'orderDetailsorderDetails');
-
-  function handleUpdateStatus(event) {
-    event.preventDefault();
-    const { status } = formData;
-
-    dispatch(updateOrderStatus({ id: orderDetails?._id, orderStatus: status })).then((data) => {
-      if (data?.payload?.success) {
-        dispatch(getOrderDetailsForAdmin(orderDetails?._id));
-        dispatch(getAllOrdersForAdmin());
-        setFormData(initialFormData);
-        toast({
-          title: data?.payload?.message,
-        });
-      }
-    });
+  if (!orderDetails) {
+    return null;
   }
 
+  const handleUpdateClick = () => {
+    onUpdateStatus(orderDetails._id, newStatus);
+  };
+
   return (
-    <DialogContent className="sm:max-w-[600px] h-[90vh] overflow-y-auto">
-      <div className="grid gap-6">
-        <div className="grid gap-2">
-          <div className="flex mt-6 items-center justify-between">
-            <p className="font-medium">Order ID</p>
-            <Label>{orderDetails?._id}</Label>
+    <DialogContent className="sm:max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>Order Details</DialogTitle>
+        <DialogDescription>Order ID: {orderDetails._id}</DialogDescription>
+      </DialogHeader>
+
+      <div className="grid gap-6 py-4">
+        {/* Customer & Shipping Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <h4 className="font-semibold">Customer Information</h4>
+            <p className="text-sm text-muted-foreground">{orderDetails.customerName}</p>
+            <p className="text-sm text-muted-foreground">{orderDetails.email}</p>
+            <p className="text-sm text-muted-foreground">{orderDetails.addressInfo?.phone}</p>
           </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Order Date</p>
-            <Label>{orderDetails?.orderDate.split('T')[0]}</Label>
-          </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Order Price</p>
-            <Label>${orderDetails?.totalAmount}</Label>
-          </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Payment method</p>
-            <Label>{orderDetails?.paymentMethod}</Label>
-          </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Payment Status</p>
-            <Label>{orderDetails?.paymentStatus}</Label>
-          </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Order Status</p>
-            <Label>
-              <Badge
-                className={`py-1 px-3 ${
-                  orderDetails?.orderStatus === 'confirmed'
-                    ? 'bg-green-500'
-                    : orderDetails?.orderStatus === 'rejected'
-                    ? 'bg-red-600'
-                    : 'bg-black'
-                }`}
-              >
-                {orderDetails?.orderStatus}
-              </Badge>
-            </Label>
-          </div>
-        </div>
-        <Separator />
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <div className="font-medium">Order Details</div>
-            <ul className="grid gap-3">
-              {orderDetails?.cartItems && orderDetails?.cartItems.length > 0
-                ? orderDetails?.cartItems.map((item) => (
-                    <li className="flex items-center justify-between">
-                      <span>Title: {item.title}</span>
-                      <span>Quantity: {item.quantity}</span>
-                      <span>Price: ${item.price}</span>
-                    </li>
-                  ))
-                : null}
-            </ul>
-          </div>
-        </div>
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <div className="font-medium">Shipping Info</div>
-            <div className="grid gap-0.5 text-muted-foreground">
-              <span>{user.userName}</span>
-              <span>{orderDetails?.addressInfo?.address}</span>
-              <span>{orderDetails?.addressInfo?.city}</span>
-              <span>{orderDetails?.addressInfo?.pincode}</span>
-              <span>{orderDetails?.addressInfo?.phone}</span>
-              <span>{orderDetails?.addressInfo?.notes}</span>
-            </div>
+          <div className="space-y-2">
+            <h4 className="font-semibold">Shipping Address</h4>
+            <p className="text-sm text-muted-foreground">
+              {orderDetails.addressInfo?.address}, {orderDetails.addressInfo?.city},{' '}
+              {orderDetails.addressInfo?.pincode}
+            </p>
+            {orderDetails.addressInfo?.notes && (
+              <p className="text-sm text-muted-foreground italic">
+                Notes: {orderDetails.addressInfo.notes}
+              </p>
+            )}
           </div>
         </div>
 
+        <Separator />
+
+        {/* Order & Payment Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="space-y-1">
+            <p className="text-muted-foreground">Order Status</p>
+            <Badge className={getOrderStatus(orderDetails.orderStatus)}>
+              {orderDetails.orderStatus.toUpperCase()}
+            </Badge>
+          </div>
+          <div className="space-y-1">
+            <p className="text-muted-foreground">Payment Status</p>
+            <Badge className={getPaymentStatus(orderDetails.paymentStatus)}>
+              {orderDetails.paymentStatus.toUpperCase()}
+            </Badge>
+          </div>
+          <div className="space-y-1">
+            <p className="text-muted-foreground">Order Date</p>
+            <p className="font-medium">{new Date(orderDetails.orderDate).toLocaleString()}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-muted-foreground">Total Amount</p>
+            <p className="font-bold text-lg">{formatPrice(orderDetails.totalAmount)}</p>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Items List */}
         <div>
-          <CommonForm
-            formControls={[
-              {
-                label: 'Order Status',
-                name: 'status',
-                componentType: 'select',
-                options: [
-                  { id: 'pending', label: 'Pending' },
-                  { id: 'inProcess', label: 'In Process' },
-                  { id: 'inShipping', label: 'In Shipping' },
-                  { id: 'delivered', label: 'Delivered' },
-                  { id: 'rejected', label: 'Rejected' },
-                ],
-              },
-            ]}
-            formData={formData}
-            setFormData={setFormData}
-            buttonText={'Update Order Status'}
-            onSubmit={handleUpdateStatus}
-          />
+          <h4 className="font-semibold mb-4">Items Ordered</h4>
+          <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+            {orderDetails.cartItems.map((item, index) => (
+              <div key={index} className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-16 h-16 object-cover rounded-md"
+                  />
+                  <div>
+                    <p className="font-semibold">{item.title}</p>
+                    <p className="text-sm text-muted-foreground">Variant: {item.variantName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.quantity} x {formatPrice(item.price)}
+                    </p>
+                  </div>
+                </div>
+                <p className="font-semibold">{formatPrice(item.quantity * item.price)}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
+      <Separator />
+
+      <DialogFooter className="flex-col sm:flex-row sm:justify-between items-center gap-4 pt-4">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Label htmlFor="order-status" className="whitespace-nowrap">
+            Update Order Status
+          </Label>
+          <Select value={newStatus} onValueChange={setNewStatus}>
+            <SelectTrigger id="order-status" className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              {ORDER_STATUS_OPTIONS.map((order) => (
+                <SelectItem key={order.value} value={order.value}>
+                  {order.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          onClick={handleUpdateClick}
+          disabled={newStatus === orderDetails.orderStatus || isLoading}
+        >
+          {isLoading ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   );
 }
-
-export default AdminOrderDetailsView;

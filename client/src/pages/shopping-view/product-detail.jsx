@@ -1,6 +1,6 @@
 import { fetchProductById, clearCurrentProduct } from '@/store/admin/products-slice';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { addToCart, fetchCartItems } from '@/store/shop/cart-slice';
 import useToast from '@/hooks/useToast';
+import { ArrowLeft } from 'lucide-react';
 
 function ProductDetailPage() {
   const { productId } = useParams();
@@ -134,6 +135,12 @@ function ProductDetailPage() {
     <div className="max-w-screen-xl mx-auto px-5 sm:px-10 xl:px-0 pt-10">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
         <div className="md:col-span-6 xl:col-span-4 overflow-hidden rounded-lg aspect-square max-h-96">
+          <Link to="/shop/listing" className="flex items-center mb-2">
+            <Button variant="outline" size="icon" className="mr-2">
+              <ArrowLeft />
+            </Button>
+            <span>Kembali ke Daftar Produk</span>
+          </Link>
           <img src={image} alt={title} className="w-full h-full object-cover" />
         </div>
 

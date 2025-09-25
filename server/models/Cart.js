@@ -2,15 +2,13 @@ const mongoose = require('mongoose');
 
 const CartSchema = new mongoose.Schema(
   {
-    // 🔹 userId sekarang opsional
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
-    // 🔹 sessionId untuk melacak keranjang tamu
     sessionId: {
       type: String,
-      index: true, // index untuk pencarian lebih cepat
+      index: true,
     },
     items: [
       {
@@ -42,7 +40,6 @@ const CartSchema = new mongoose.Schema(
   }
 );
 
-// Tambahkan index gabungan
 CartSchema.index({ userId: 1, sessionId: 1 });
 
 module.exports = mongoose.model('Cart', CartSchema);

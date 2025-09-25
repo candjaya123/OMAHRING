@@ -39,6 +39,7 @@ function ShoppingOrders() {
 
   useEffect(() => {
     if (user?.id || sessionId) {
+      if (sessionId.includes('guest-')) return;
       dispatch(getAllOrdersByUserId(user?.id || sessionId));
     }
   }, [dispatch, user?.id]);

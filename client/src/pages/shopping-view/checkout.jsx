@@ -194,10 +194,7 @@ function ShoppingCheckout() {
         toast.toastSuccess('Sukses', 'Pesanan berhasil dibuat.');
         window.location.href = `/shop/payment-pending/${res.payload.orderId}`;
       } else {
-        toast.toastError(
-          'Gagal',
-          res.error?.message || res.payload?.error || 'Terjadi kesalahan saat membuat pesanan.'
-        );
+        toast.toastError('Gagal', res.payload || 'Terjadi kesalahan saat membuat pesanan.');
       }
     });
   };

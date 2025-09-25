@@ -40,7 +40,7 @@ export const createNewOrder = createAsyncThunk(
       const response = await api.post('/shop/order/create', orderData);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.message || 'Gagal membuat pesanan');
+      return rejectWithValue(err.response?.data.message || 'Gagal membuat pesanan');
     }
   }
 );
