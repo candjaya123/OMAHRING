@@ -27,6 +27,9 @@ const AddressInfoSchema = new Schema(
 const MidtransSchema = new Schema(
   {
     orderId: String,
+    snapToken: String, // ← TAMBAHKAN
+    tokenExpiry: Date, // ← TAMBAHKAN
+    redirectUrl: String, // ← TAMBAHKAN
     transactionId: String,
     transactionStatus: String,
     fraudStatus: String,

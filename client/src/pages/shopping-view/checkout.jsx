@@ -45,6 +45,9 @@ function ShoppingCheckout() {
     notes: '',
   });
 
+  console.log(newAddressData);
+  console.log(useNewAddress);
+
   // State untuk guest checkout
   const [guestInfo, setGuestInfo] = useState({
     name: '',
@@ -136,7 +139,7 @@ function ShoppingCheckout() {
       }
     } else {
       if (!validateUserAddress()) {
-        toast.toastError('Alamat Belum Dipilih', 'Pilih alamat pengiriman atau isi alamat baru.');
+        toast.toastError('Data Belum Lengkap', 'Pilih alamat pengiriman atau isi alamat baru.');
         return;
       }
     }
@@ -173,7 +176,7 @@ function ShoppingCheckout() {
     }
 
     const orderData = {
-      userId: user?._id || localStorage.getItem('sessionId') || `guest-${Date.now()}`,
+      userId: user?.id || localStorage.getItem('sessionId') || `guest-${Date.now()}`,
       cartId: cartItems._id,
       cartItems: cartItems.items.map((item) => ({
         productId: item.productId,

@@ -110,11 +110,7 @@ function HeaderRightContent() {
 
   function handleLogout() {
     dispatch(logoutUser());
-    let sessionId = localStorage.getItem('sessionId');
-    if (!sessionId) {
-      sessionId = `guest-${uuidv4()}`;
-      localStorage.setItem('sessionId', sessionId);
-    }
+    localStorage.removeItem('sessionId');
     navigate('/shop/home');
   }
 
@@ -178,7 +174,7 @@ function HeaderRightContent() {
               Masuk sebagai {user?.userName || 'Pengguna'}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {user.role === 'admin' ? (
+            {user.role === 'admin' || user.role === 'manager' ? (
               <DropdownMenuItem
                 onClick={() => navigate('/admin/dashboard')}
                 className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"

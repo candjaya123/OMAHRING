@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Trash, AlertCircle } from 'lucide-react';
 
-// Import dari Redux store dan komponen UI Anda
+// Import dari Redux store dan komponen UI
 import {
   addNewProduct,
   deleteProduct,
@@ -27,6 +27,14 @@ const initialFormData = {
   averageReview: 0,
 };
 
+// Template untuk varian baru
+const newVariantTemplate = {
+  name: '',
+  price: 0,
+  salePrice: 0,
+  totalStock: 0,
+};
+
 function AdminProducts() {
   // State Management
   const [openCreateProductsDialog, setOpenCreateProductsDialog] = useState(false);
@@ -45,19 +53,33 @@ function AdminProducts() {
   // Fungsi validasi
   const validateForm = () => {
     const errors = [];
-    if (!formData.title) errors.push('Nama produk wajib diisi.');
-    if (!formData.description) errors.push('Deskripsi produk wajib diisi.');
+    if (!formData.title?.trim()) errors.push('Nama produk wajib diisi.');
+    if (!formData.description?.trim()) errors.push('Deskripsi produk wajib diisi.');
     if (!formData.category) errors.push('Kategori produk wajib diisi.');
+
     if (formData.variants.length === 0) {
       errors.push('Produk harus memiliki setidaknya satu varian.');
     } else {
       formData.variants.forEach((variant, index) => {
-        if (!variant.name) errors.push(`Nama untuk Varian #${index + 1} wajib diisi.`);
-        if (variant.price < 0) errors.push(`Harga untuk Varian #${index + 1} tidak boleh negatif.`);
-        if (variant.totalStock < 0)
-          errors.push(`Stok untuk Varian #${index + 1} tidak boleh negatif.`);
+        if (!variant.name?.trim()) {
+          errors.push(`Nama untuk Varian #${index + 1} wajib diisi.`);
+        }
+        const price = Number(variant.price);
+        const salePrice = Number(variant.salePrice);
+        const totalStock = Number(variant.totalStock);
+
+        if (isNaN(price) || price < 0) {
+          errors.push(`Harga untuk Varian #${index + 1} tidak valid.`);
+        }
+        if (isNaN(salePrice) || salePrice < 0) {
+          errors.push(`Harga diskon untuk Varian #${index + 1} tidak valid.`);
+        }
+        if (isNaN(totalStock) || totalStock < 0) {
+          errors.push(`Stok untuk Varian #${index + 1} tidak valid.`);
+        }
       });
     }
+
     setFormErrors(errors);
     return errors.length === 0;
   };
@@ -73,28 +95,45 @@ function AdminProducts() {
   // Handler untuk input utama (non-varian)
   const handleInputChange = (event) => {
     const { name, value } = event.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handler untuk input varian
+  // Handler untuk input varian dengan konversi tipe data yang benar
   const handleVariantChange = (index, event) => {
     const { name, value } = event.target;
-    const updatedVariants = [...formData.variants];
-    updatedVariants[index][name] = value;
-    setFormData({ ...formData, variants: updatedVariants });
-  };
 
-  const handleAddVariant = () => {
-    setFormData({
-      ...formData,
-      variants: [...formData.variants, { name: '', price: 0, salePrice: 0, totalStock: 0 }],
+    setFormData((prev) => {
+      const updatedVariants = [...prev.variants];
+
+      // Konversi ke number untuk field numerik
+      if (name === 'price' || name === 'salePrice' || name === 'totalStock') {
+        updatedVariants[index] = {
+          ...updatedVariants[index],
+          [name]: value === '' ? 0 : Number(value),
+        };
+      } else {
+        updatedVariants[index] = {
+          ...updatedVariants[index],
+          [name]: value,
+        };
+      }
+
+      return { ...prev, variants: updatedVariants };
     });
   };
 
+  const handleAddVariant = () => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: [...prev.variants, { ...newVariantTemplate }],
+    }));
+  };
+
   const handleRemoveVariant = (index) => {
-    const updatedVariants = [...formData.variants];
-    updatedVariants.splice(index, 1);
-    setFormData({ ...formData, variants: updatedVariants });
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index),
+    }));
   };
 
   const resetForm = () => {
@@ -127,9 +166,18 @@ function AdminProducts() {
       return;
     }
 
+    // Pastikan semua nilai numerik sudah dalam bentuk number
+    const sanitizedVariants = formData.variants.map((variant) => ({
+      ...variant,
+      price: Number(variant.price),
+      salePrice: Number(variant.salePrice),
+      totalStock: Number(variant.totalStock),
+    }));
+
     const finalFormData = {
       ...formData,
-      image: uploadedImageUrl || formData.image, // Gunakan URL yang sudah diupload
+      image: uploadedImageUrl || formData.image,
+      variants: sanitizedVariants,
     };
 
     const action = currentEditedId
@@ -141,7 +189,6 @@ function AdminProducts() {
         toast({
           title: `Produk berhasil ${currentEditedId ? 'diperbarui' : 'ditambahkan'}.`,
         });
-        // 🔹 Tidak perlu fetch ulang, Redux state sudah diupdate otomatis
         setOpenCreateProductsDialog(false);
         resetForm();
       } else {
@@ -159,7 +206,6 @@ function AdminProducts() {
       dispatch(deleteProduct(productId)).then((result) => {
         if (result.payload?.success) {
           toast({ title: 'Produk berhasil dihapus.' });
-          // 🔹 Tidak perlu fetchAllProducts lagi karena Redux sudah auto-update
         } else {
           toast({
             title: 'Gagal menghapus produk.',
@@ -241,6 +287,7 @@ function AdminProducts() {
                   onChange={handleInputChange}
                   className="w-full p-2 border rounded-md mt-1"
                   placeholder="Masukkan deskripsi produk"
+                  rows={4}
                 />
               </div>
               <div>
@@ -282,7 +329,7 @@ function AdminProducts() {
                     <label className="text-sm font-medium">Nama Varian</label>
                     <input
                       name="name"
-                      value={variant.name}
+                      value={variant.name || ''}
                       onChange={(e) => handleVariantChange(index, e)}
                       className="w-full p-2 border rounded-md mt-1"
                       placeholder="Contoh: Merah, Ukuran L"
@@ -293,7 +340,9 @@ function AdminProducts() {
                     <input
                       name="price"
                       type="number"
-                      value={variant.price}
+                      min="0"
+                      step="0.01"
+                      value={variant.price || 0}
                       onChange={(e) => handleVariantChange(index, e)}
                       className="w-full p-2 border rounded-md mt-1"
                     />
@@ -303,7 +352,9 @@ function AdminProducts() {
                     <input
                       name="salePrice"
                       type="number"
-                      value={variant.salePrice}
+                      min="0"
+                      step="0.01"
+                      value={variant.salePrice || 0}
                       onChange={(e) => handleVariantChange(index, e)}
                       className="w-full p-2 border rounded-md mt-1"
                     />
@@ -313,7 +364,9 @@ function AdminProducts() {
                     <input
                       name="totalStock"
                       type="number"
-                      value={variant.totalStock}
+                      min="0"
+                      step="1"
+                      value={variant.totalStock || 0}
                       onChange={(e) => handleVariantChange(index, e)}
                       className="w-full p-2 border rounded-md mt-1"
                     />
@@ -343,8 +396,8 @@ function AdminProducts() {
                   <div className="ml-3">
                     <p className="text-sm text-yellow-700 font-semibold">Form belum lengkap:</p>
                     <ul className="mt-2 list-disc list-inside text-sm text-yellow-700">
-                      {formErrors.map((error) => (
-                        <li key={error}>{error}</li>
+                      {formErrors.map((error, idx) => (
+                        <li key={idx}>{error}</li>
                       ))}
                     </ul>
                   </div>

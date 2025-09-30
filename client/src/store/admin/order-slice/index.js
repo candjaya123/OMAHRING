@@ -2,10 +2,10 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import api from '../../../utils/axios';
 
 const initialState = {
-  isLoading: false, // 🔹 Menambahkan state isLoading
+  isLoading: false,
   orderList: [],
   orderDetails: null,
-  error: null, // 🔹 Menambahkan state untuk error
+  error: null,
 };
 
 export const getAllOrdersForAdmin = createAsyncThunk('/order/getAllOrdersForAdmin', async () => {
@@ -30,7 +30,7 @@ export const updateOrderStatus = createAsyncThunk(
 );
 
 const adminOrderSlice = createSlice({
-  name: 'adminOrder', // Nama slice sebaiknya konsisten (camelCase)
+  name: 'adminOrder',
   initialState,
   reducers: {
     resetOrderDetails: (state) => {
@@ -39,7 +39,6 @@ const adminOrderSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Get All Orders
       .addCase(getAllOrdersForAdmin.pending, (state) => {
         state.isLoading = true;
       })
@@ -51,7 +50,6 @@ const adminOrderSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message;
       })
-      // Get Order Details
       .addCase(getOrderDetailsForAdmin.pending, (state) => {
         state.isLoading = true;
       })
@@ -64,19 +62,21 @@ const adminOrderSlice = createSlice({
         state.error = action.error.message;
       })
       .addCase(updateOrderStatus.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
       })
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
-        state.loading = false;
-        const index = state.orderList.findIndex((order) => order._id === action.payload._id);
-        if (index !== -1) {
-          state.orderList[index] = action.payload;
-        }
-        state.orderDetails = action.payload;
+        state.isLoading = false;
+        const updatedOrder = action.payload.data;
+        state.orderList = state.orderList.map((order) => {
+          if (String(order._id) === String(updatedOrder._id)) {
+            return updatedOrder;
+          }
+          return order;
+        });
       })
       .addCase(updateOrderStatus.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.error.message;
       });
   },
 });

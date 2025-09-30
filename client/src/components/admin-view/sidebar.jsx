@@ -91,7 +91,7 @@ function SidebarContent({ setOpen }) {
   return (
     <div className="flex flex-col h-full">
       <div
-        onClick={() => handleNavigate('/admin/dashboard')}
+        onClick={() => navigate('/shop/home')}
         className="flex cursor-pointer items-center border-b pb-6"
       >
         <img src={logoOmahring} alt="Omahring" className="h-8" />

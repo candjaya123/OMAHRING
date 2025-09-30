@@ -49,6 +49,10 @@ function ShoppingListing() {
 
   const categorySearchParam = searchParams.get('category');
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   function handleSort(value) {
     setSort(value);
   }

@@ -1,4 +1,4 @@
-const Order = require("../../models/Order");
+const Order = require('../../models/Order');
 
 const getAllOrdersOfAllUsers = async (req, res) => {
   try {
@@ -7,7 +7,7 @@ const getAllOrdersOfAllUsers = async (req, res) => {
     if (!orders.length) {
       return res.status(404).json({
         success: false,
-        message: "No orders found!",
+        message: 'No orders found!',
       });
     }
 
@@ -19,7 +19,7 @@ const getAllOrdersOfAllUsers = async (req, res) => {
     console.log(e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: 'Some error occured!',
     });
   }
 };
@@ -33,7 +33,7 @@ const getOrderDetailsForAdmin = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found!",
+        message: 'Order not found!',
       });
     }
 
@@ -45,7 +45,7 @@ const getOrderDetailsForAdmin = async (req, res) => {
     console.log(e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: 'Some error occured!',
     });
   }
 };
@@ -60,21 +60,26 @@ const updateOrderStatus = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found!",
+        message: 'Order not found!',
       });
     }
 
-    await Order.findByIdAndUpdate(id, { orderStatus });
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { orderStatus },
+      { new: true, runValidators: true } // new: true untuk data baru, runValidators untuk validasi
+    );
 
     res.status(200).json({
       success: true,
-      message: "Order status is updated successfully!",
+      message: 'Order status is updated successfully!',
+      data: updatedOrder,
     });
   } catch (e) {
     console.log(e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: 'Some error occured!',
     });
   }
 };

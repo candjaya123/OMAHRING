@@ -38,7 +38,7 @@ function App() {
 
   const getOrSetSessionId = () => {
     let sessionId = localStorage.getItem('sessionId');
-    if (!sessionId) {
+    if (!sessionId && !isAuthenticated) {
       sessionId = `guest-${uuidv4()}`;
       localStorage.setItem('sessionId', sessionId);
     }

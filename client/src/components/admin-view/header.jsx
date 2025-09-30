@@ -1,13 +1,15 @@
-import { AlignJustify, LogOut } from "lucide-react";
-import { Button } from "../ui/button";
-import { useDispatch } from "react-redux";
-import { logoutUser } from "@/store/auth-slice";
+import { AlignJustify, LogOut } from 'lucide-react';
+import { Button } from '../ui/button';
+import { useDispatch } from 'react-redux';
+import { logoutUser } from '@/store/auth-slice';
+import { v4 as uuidv4 } from 'uuid';
 
 function AdminHeader({ setOpen }) {
   const dispatch = useDispatch();
 
   function handleLogout() {
     dispatch(logoutUser());
+    localStorage.removeItem('sessionId');
   }
 
   return (

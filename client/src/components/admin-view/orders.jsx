@@ -32,10 +32,11 @@ function AdminOrdersView() {
   };
 
   const handleUpdateStatus = (orderId, newStatus) => {
-    dispatch(updateOrderStatus({ orderId, newStatus }))
+    dispatch(updateOrderStatus({ id: orderId, orderStatus: newStatus }))
       .unwrap()
       .then(() => {
         toast.toastSuccess('Berhasil', 'Status pesanan berhasil diperbarui.');
+        setSelectedOrder(null);
       })
       .catch((error) => {
         toast.toastError('Gagal', error.message || 'Terjadi kesalahan saat memperbarui status.');

@@ -63,7 +63,7 @@ const createOrder = async (req, res) => {
       }
       if (!user) {
         user = new User({
-          userName: customerName, // jika schema lama masih pakai userName
+          userName: customerName,
           email,
           role: 'user',
         });
@@ -74,7 +74,7 @@ const createOrder = async (req, res) => {
       if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
     }
 
-    // 4) Validasi stok & hitung ulang total dari DB (bukan dari FE)
+    // 4) Validasi stok & hitung ulang total dari DB
     const normalizedItems = [];
     let expectedTotal = 0;
 
@@ -106,7 +106,6 @@ const createOrder = async (req, res) => {
       }
 
       const unitPrice = toInt(variant.salePrice || variant.price);
-
       expectedTotal += unitPrice * toInt(item.quantity);
 
       normalizedItems.push({
@@ -123,13 +122,11 @@ const createOrder = async (req, res) => {
       });
     }
 
-    // 5) Cocokkan total dari FE (opsional – kalau FE kirim shippingFee, tambahkan di sini)
+    // 5) Cocokkan total dari FE
     if (toInt(totalAmount) !== expectedTotal) {
       return res.status(400).json({
         success: false,
-        message: `Total amount tidak sesuai. FE=${toInt(
-          totalAmount
-        )}, Server=${expectedTotal}, normalized${normalizedItems}`,
+        message: `Total amount tidak sesuai. FE=${toInt(totalAmount)}, Server=${expectedTotal}`,
       });
     }
 
@@ -154,11 +151,12 @@ const createOrder = async (req, res) => {
       orderDate: new Date(),
     });
 
-    // 7) Parameter Snap
+    // 7) Parameter Snap dengan expiry 2 jam
+    const expiryMinutes = 120;
     const parameter = {
       transaction_details: {
-        order_id: newOrder._id.toString(), // unique
-        gross_amount: expectedTotal, // integer
+        order_id: newOrder._id.toString(),
+        gross_amount: expectedTotal,
       },
       item_details: normalizedItems.map((it) => ({
         id: it.productId.toString(),
@@ -171,31 +169,29 @@ const createOrder = async (req, res) => {
         email: email,
         phone: addressInfo.phone,
       },
-      enabled_payments: [
-        'credit_card',
-        'gopay',
-        'qris',
-        'shopeepay',
-        'echannel', // Mandiri bill
-        'bank_transfer', // BCA/BNI/BRI/Permata
-      ],
+      enabled_payments: ['credit_card', 'gopay', 'qris', 'shopeepay', 'echannel', 'bank_transfer'],
       credit_card: { secure: true },
       callbacks: {
         finish: `${process.env.FRONTEND_URL}/shop/payment-success`,
         error: `${process.env.FRONTEND_URL}/shop/checkout`,
-        pending: `${process.env.FRONTEND_URL}/shop/payment-pending`,
+        pending: `${process.env.FRONTEND_URL}/shop/payment-pending/${newOrder._id}`,
       },
-      expiry: { unit: 'minutes', duration: 120 }, // pembayaran kadaluarsa 2 jam
+      expiry: { unit: 'minutes', duration: expiryMinutes },
     };
 
     const transaction = await snap.createTransaction(parameter);
 
-    // Simpan sebagian info midtrans (opsional, token tidak perlu disimpan)
+    // 🔥 PENTING: Simpan token dan expiry time
+    const tokenExpiry = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
     await Order.updateOne(
       { _id: newOrder._id },
       {
         $set: {
           'midtrans.orderId': newOrder._id.toString(),
+          'midtrans.snapToken': transaction.token,
+          'midtrans.tokenExpiry': tokenExpiry,
+          'midtrans.redirectUrl': transaction.redirect_url,
         },
       }
     );
@@ -213,6 +209,7 @@ const createOrder = async (req, res) => {
       redirectUrl: transaction.redirect_url,
       orderId: newOrder._id,
       userId: user._id,
+      tokenExpiry: tokenExpiry.toISOString(),
       message: 'Pesanan berhasil dibuat',
     });
   } catch (error) {
@@ -224,13 +221,105 @@ const createOrder = async (req, res) => {
   }
 };
 
+// ==== REGENERATE SNAP TOKEN ====
+const regenerateSnapToken = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) return res.status(400).json({ success: false, message: 'Order ID diperlukan' });
+
+    const order = await Order.findById(orderId);
+    if (!order)
+      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+
+    // Validasi status order
+    if (!['unpaid', 'pending'].includes(order.paymentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Order ${orderId} tidak bisa regenerate token, status sekarang: ${order.paymentStatus}`,
+      });
+    }
+
+    // 🔥 CEK: Apakah token existing masih valid?
+    const now = new Date();
+    const tokenExpiry = order.midtrans?.tokenExpiry ? new Date(order.midtrans.tokenExpiry) : null;
+
+    // Jika token masih valid (belum expired), return token yang ada
+    if (tokenExpiry && tokenExpiry > now && order.midtrans?.snapToken) {
+      return res.status(200).json({
+        success: true,
+        token: order.midtrans.snapToken,
+        redirectUrl: order.midtrans.redirectUrl,
+        orderId: order._id,
+        message: 'Menggunakan token yang sudah ada (masih valid)',
+        isRegenerated: false,
+        expiresAt: tokenExpiry.toISOString(),
+      });
+    }
+
+    // Token expired atau tidak ada, buat yang baru
+    const expiryMinutes = 120;
+    const parameter = {
+      transaction_details: {
+        order_id: order._id.toString(),
+        gross_amount: order.totalAmount,
+      },
+      item_details: order.cartItems.map((it) => ({
+        id: it.productId.toString(),
+        price: it.price,
+        quantity: it.quantity,
+        name: `${it.title} - ${it.variantName}`,
+      })),
+      customer_details: {
+        first_name: order.customerName,
+        email: order.email,
+        phone: order.addressInfo?.phone,
+      },
+      enabled_payments: ['credit_card', 'gopay', 'qris', 'shopeepay', 'echannel', 'bank_transfer'],
+      credit_card: { secure: true },
+      callbacks: {
+        finish: `${process.env.FRONTEND_URL}/shop/payment-success`,
+        error: `${process.env.FRONTEND_URL}/shop/checkout`,
+        pending: `${process.env.FRONTEND_URL}/shop/payment-pending/${order._id}`,
+      },
+      expiry: { unit: 'minutes', duration: expiryMinutes },
+    };
+
+    const transaction = await snap.createTransaction(parameter);
+    const newTokenExpiry = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
+    // Update dengan token baru
+    await Order.updateOne(
+      { _id: order._id },
+      {
+        $set: {
+          'midtrans.snapToken': transaction.token,
+          'midtrans.tokenExpiry': newTokenExpiry,
+          'midtrans.redirectUrl': transaction.redirect_url,
+        },
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      token: transaction.token,
+      redirectUrl: transaction.redirect_url,
+      orderId: order._id,
+      message: 'Token baru berhasil dibuat',
+      isRegenerated: true,
+      expiresAt: newTokenExpiry.toISOString(),
+    });
+  } catch (error) {
+    console.error('RegenerateSnapToken Error:', error);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Terjadi kesalahan server: ' + error.message });
+  }
+};
+
 // ==== HANDLE NOTIFICATION (webhook) ====
 const handleNotification = async (req, res) => {
   try {
-    // Midtrans kirim JSON ke endpoint ini
     const body = req.body;
-
-    // (Opsional) pakai SDK untuk normalize
     const notificationJson = await snap.transaction.notification(body);
 
     const {
@@ -282,7 +371,6 @@ const handleNotification = async (req, res) => {
         order.paymentStatus = 'pending';
         order.orderStatus = 'challenge';
       } else {
-        // paid
         await fulfillPaidOrder(order);
       }
     } else if (transaction_status === 'settlement') {
@@ -294,7 +382,6 @@ const handleNotification = async (req, res) => {
       order.paymentStatus = 'pending';
       order.orderStatus = 'pending';
     } else {
-      // status lain
       order.paymentStatus = 'pending';
       order.orderStatus = 'needs_review';
     }
@@ -311,13 +398,11 @@ const handleNotification = async (req, res) => {
 
 // ==== helper: fulfill order ketika sudah paid ====
 async function fulfillPaidOrder(orderDoc) {
-  // Idempotent: hanya proses jika sebelumnya belum paid/confirmed
   if (orderDoc.paymentStatus === 'paid' || orderDoc.orderStatus === 'confirmed') {
     console.log('Order sudah diproses sebelumnya, keluar dari fungsi.');
     return;
   }
 
-  // Kurangi stok tiap item secara atomik
   for (const item of orderDoc.cartItems) {
     const res = await Product.updateOne(
       {
@@ -342,7 +427,6 @@ async function fulfillPaidOrder(orderDoc) {
     }
   }
 
-  // Hapus cart setelah paid
   if (orderDoc.cartId) {
     try {
       await Cart.findByIdAndDelete(orderDoc.cartId);
@@ -393,65 +477,6 @@ const getOrderDetails = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: 'Terjadi kesalahan pada server: ' + error.message });
-  }
-};
-
-const regenerateSnapToken = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    if (!orderId) return res.status(400).json({ success: false, message: 'Order ID diperlukan' });
-
-    const order = await Order.findById(orderId);
-    if (!order)
-      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
-
-    if (!['unpaid', 'pending'].includes(order.paymentStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: `Order ${orderId} tidak bisa regenerate token, status sekarang: ${order.paymentStatus}`,
-      });
-    }
-
-    const parameter = {
-      transaction_details: {
-        order_id: order._id.toString(),
-        gross_amount: order.totalAmount,
-      },
-      item_details: order.cartItems.map((it) => ({
-        id: it.productId.toString(),
-        price: it.price,
-        quantity: it.quantity,
-        name: `${it.title} - ${it.variantName}`,
-      })),
-      customer_details: {
-        first_name: order.customerName,
-        email: order.email,
-        phone: order.addressInfo?.phone,
-      },
-      enabled_payments: ['credit_card', 'gopay', 'qris', 'shopeepay', 'echannel', 'bank_transfer'],
-      credit_card: { secure: true },
-      callbacks: {
-        finish: `${process.env.FRONTEND_URL}/shop/payment-success`,
-        error: `${process.env.FRONTEND_URL}/shop/checkout`,
-        pending: `${process.env.FRONTEND_URL}/shop/payment-pending/${order._id}`,
-      },
-      expiry: { unit: 'minutes', duration: 120 },
-    };
-
-    // bisa juga: const token = await snap.createTransactionToken(parameter);
-    const transaction = await snap.createTransaction(parameter);
-
-    return res.status(200).json({
-      success: true,
-      token: transaction.token,
-      redirectUrl: transaction.redirect_url,
-      orderId: order._id,
-    });
-  } catch (error) {
-    console.error('RegenerateSnapToken Error:', error);
-    return res
-      .status(500)
-      .json({ success: false, message: 'Terjadi kesalahan server: ' + error.message });
   }
 };
 

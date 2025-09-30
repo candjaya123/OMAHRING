@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 
 // UI Components
 import { Button } from '../ui/button';
@@ -12,9 +13,8 @@ import { Badge } from '../ui/badge';
 import { getAllOrdersByUserId, getOrderDetails, resetOrderDetails } from '@/store/shop/order-slice';
 import { formatPrice } from '@/utils/currencyFormatters';
 import ShoppingOrderDetailsView from './order-details';
-import { useDispatch, useSelector } from 'react-redux';
 
-// Constants for styling to improve readability and maintainability
+// Constants for styling
 const ORDER_STATUS_STYLES = {
   confirmed: 'bg-green-600 hover:bg-green-700',
   rejected: 'bg-red-600 hover:bg-red-700',
@@ -35,41 +35,42 @@ function ShoppingOrders() {
   const { userOrderList, orderDetails } = useSelector((state) => state.shopOrder);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+
   const sessionId = localStorage.getItem('sessionId');
 
+  // Load order list
   useEffect(() => {
     if (user?.id || sessionId) {
-      if (sessionId.includes('guest-')) return;
       dispatch(getAllOrdersByUserId(user?.id || sessionId));
     }
-  }, [dispatch, user?.id]);
+  }, [dispatch, user?.id, sessionId]);
 
-  useEffect(() => {
-    if (orderDetails && Object.keys(orderDetails).length > 0) {
-      setIsDialogOpen(true);
-    }
-  }, [orderDetails]);
-
-  // Handler to fetch details for a specific order
+  // Klik tombol view details
   const handleFetchOrderDetails = (orderId) => {
+    setSelectedOrderId(orderId); // set order yang dipilih
+    setIsDialogOpen(true);
     dispatch(getOrderDetails({ id: orderId, isAdmin: false }));
   };
 
-  // Handler to close the dialog and reset the details in the store
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    // Reset orderDetails setelah dialog tertutup untuk menghindari loop
-    setTimeout(() => {
-      dispatch(resetOrderDetails());
-    }, 200); // Delay sedikit untuk animasi closing
+  // Tutup dialog
+  const handleCloseDialog = (open) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setTimeout(() => {
+        setSelectedOrderId(null); // reset id yang dipilih
+        dispatch(resetOrderDetails());
+      }, 200); // tunggu animasi selesai
+    }
   };
 
   const getOrderStatusStyle = (status) =>
     ORDER_STATUS_STYLES[status] || ORDER_STATUS_STYLES.default;
+
   const getPaymentStatusStyle = (status) =>
     PAYMENT_STATUS_STYLES[status] || PAYMENT_STATUS_STYLES.default;
 
-  // Conditionally render the table body
+  // Table body
   const renderTableBody = () => {
     if (!userOrderList || userOrderList.length === 0) {
       return (
@@ -142,11 +143,11 @@ function ShoppingOrders() {
         </CardContent>
       </Card>
 
-      {/* Dialog for Order Details dengan kontrol state yang lebih baik */}
+      {/* Dialog khusus untuk order yang dipilih */}
       <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-[600px]">
-          {orderDetails && <ShoppingOrderDetailsView orderDetails={orderDetails} />}
-        </DialogContent>
+        {orderDetails && selectedOrderId === orderDetails?._id && (
+          <ShoppingOrderDetailsView orderDetails={orderDetails} />
+        )}
       </Dialog>
     </>
   );

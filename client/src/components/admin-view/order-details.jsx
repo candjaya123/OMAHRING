@@ -29,6 +29,8 @@ export function AdminOrderDetailsDialog({ orderDetails, onUpdateStatus, isLoadin
   }
 
   const handleUpdateClick = () => {
+    console.log(newStatus);
+
     onUpdateStatus(orderDetails._id, newStatus);
   };
 

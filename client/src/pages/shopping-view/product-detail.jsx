@@ -1,6 +1,6 @@
 import { fetchProductById, clearCurrentProduct } from '@/store/admin/products-slice';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,19 @@ function ProductDetailPage() {
   const [rating, setRating] = useState(0);
   const [reviewMsg, setReviewMsg] = useState('');
   const sessionId = localStorage.getItem('sessionId');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/shop/listing');
+    }
+  };
 
   const handleAddToCart = async () => {
     try {
@@ -52,8 +65,6 @@ function ProductDetailPage() {
 
         if (result.payload.data?.sessionId) {
           localStorage.setItem('sessionId', result.payload.data.sessionId);
-        } else {
-          toast.toastError('Gagal', 'Gagal mendapatkan sessionId dari server.');
         }
 
         dispatch(fetchCartItems(user?.id || sessionId));
@@ -135,12 +146,12 @@ function ProductDetailPage() {
     <div className="max-w-screen-xl mx-auto px-5 sm:px-10 xl:px-0 pt-10">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
         <div className="md:col-span-6 xl:col-span-4 overflow-hidden rounded-lg aspect-square max-h-96">
-          <Link to="/shop/listing" className="flex items-center mb-2">
+          <button onClick={handleBack} className="flex items-center mb-2">
             <Button variant="outline" size="icon" className="mr-2">
               <ArrowLeft />
             </Button>
-            <span>Kembali ke Daftar Produk</span>
-          </Link>
+            <span>Kembali ke Halaman Sebelumnya</span>
+          </button>
           <img src={image} alt={title} className="w-full h-full object-cover" />
         </div>
 
