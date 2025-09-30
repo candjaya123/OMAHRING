@@ -1,34 +1,63 @@
-import CommonForm from "@/components/common/form";
-import { useToast } from "@/components/ui/use-toast";
-import { loginFormControls } from "@/config";
-import { loginUser } from "@/store/auth-slice";
-import { useState } from "react";
-import { useDispatch } from "react-redux";
-import { Link } from "react-router-dom";
+import CommonForm from '@/components/common/form';
+import { loginFormControls } from '@/config';
+import useToast from '@/hooks/useToast';
+import { loginUser } from '@/store/auth-slice';
+import { mergeCart } from '@/store/shop/cart-slice';
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
 
 const initialState = {
-  email: "",
-  password: "",
+  email: '',
+  password: '',
 };
 
 function AuthLogin() {
   const [formData, setFormData] = useState(initialState);
   const dispatch = useDispatch();
-  const { toast } = useToast();
+  const toast = useToast();
+  const { cartItems } = useSelector((state) => state.shopCart);
+  const navigate = useNavigate();
 
   function onSubmit(event) {
     event.preventDefault();
 
     dispatch(loginUser(formData)).then((data) => {
       if (data?.payload?.success) {
-        toast({
-          title: data?.payload?.message,
-        });
+        toast.toastSuccess('Sukses', 'Login berhasil.');
+
+        const sessionId = localStorage.getItem('sessionId');
+
+        // ✅ Cek cart guest
+        if (sessionId && cartItems.items.length > 0) {
+          const confirmMerge = window.confirm(
+            'Keranjang tamu ditemukan. Gabungkan dengan keranjang akun Anda?'
+          );
+
+          const actionType = confirmMerge ? 'merge' : 'replace';
+
+          dispatch(
+            mergeCart({
+              userId: data.payload.user.id,
+              sessionId,
+              action: actionType,
+            })
+          ).then(() => {
+            localStorage.removeItem('sessionId');
+            toast.toastSuccess(
+              'Sukses',
+              confirmMerge
+                ? 'Keranjang berhasil digabungkan!'
+                : 'Keranjang tamu dihapus. Menggunakan keranjang akun Anda.'
+            );
+            navigate('/');
+          });
+        } else {
+          localStorage.removeItem('sessionId');
+          navigate('/');
+        }
       } else {
-        toast({
-          title: data?.payload?.message,
-          variant: "destructive",
-        });
+        toast.toastError('Gagal', 'Login gagal');
       }
     });
   }
@@ -40,7 +69,7 @@ function AuthLogin() {
           Sign in to your account
         </h1>
         <p className="mt-2">
-          Don't have an account
+          Don&apos;t have an account
           <Link
             className="font-medium ml-2 text-primary hover:text-orange-500 hover:underline transition-colors duration-300"
             to="/auth/register"

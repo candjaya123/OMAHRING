@@ -1,43 +1,14 @@
-// const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-// const UserSchema = new mongoose.Schema({
-//   userName: {
-//     type: String,
-//     required: true,
-//     unique: true,
-//   },
-//   email: {
-//     type: String,
-//     required: true,
-//     unique: true,
-//   },
-//   password: {
-//     type: String,
-//     required: true,
-//   },
-//   role: {
-//     type: String,
-//     default: "user",
-//   },
-// });
-
-// const User = mongoose.model("User", UserSchema);
-// module.exports = User;
-
-// File: models/User.js
-
-const mongoose = require("mongoose");
-
-// 🔹 Skema untuk alamat, bisa digunakan kembali
 const AddressSchema = new mongoose.Schema({
-  addressId: { type: String, required: true }, // Added for unique address identification
+  addressId: { type: String, required: true },
   address: { type: String, required: true },
   city: { type: String, required: true },
   kodePos: { type: String, required: true },
   phone: { type: String, required: true },
-  notes: { type: String, default: "" },
-  name: { type: String, required: true }, // Added to store customer name per address
-  email: { type: String, required: true }, // Added to store customer email per address
+  notes: { type: String, default: '' },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
 });
 
 const UserSchema = new mongoose.Schema(
@@ -53,14 +24,14 @@ const UserSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: false, // 🔹 Made optional for guest users
+      required: false,
     },
     role: {
       type: String,
-      enum: ["user", "member", "admin", "manager"],
-      default: "user",
+      enum: ['user', 'member', 'admin', 'manager'],
+      default: 'user',
     },
-    addresses: [AddressSchema], // 🔹 Array alamat untuk menyimpan detail pengiriman
+    addresses: [AddressSchema],
     performance: {
       totalOrders: {
         type: Number,
@@ -72,8 +43,8 @@ const UserSchema = new mongoose.Schema(
       },
     },
   },
-  { timestamps: true } // Otomatis menambahkan createdAt dan updatedAt
+  { timestamps: true }
 );
 
-const User = mongoose.model("User", UserSchema);
+const User = mongoose.model('User', UserSchema);
 module.exports = User;

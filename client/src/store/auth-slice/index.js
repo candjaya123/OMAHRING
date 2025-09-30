@@ -1,5 +1,5 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import api from "../../utils/axios";
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import api from '../../utils/axios';
 
 const initialState = {
   isAuthenticated: false,
@@ -8,43 +8,35 @@ const initialState = {
 };
 
 export const registerUser = createAsyncThunk(
-  "/auth/register",
+  '/auth/register',
 
   async (formData) => {
-    const response = await api.post(
-      "/auth/register",
-      formData,
-      {
-        withCredentials: true,
-      }
-    );
+    const response = await api.post('/auth/register', formData, {
+      withCredentials: true,
+    });
 
     return response.data;
   }
 );
 
 export const loginUser = createAsyncThunk(
-  "/auth/login",
+  '/auth/login',
 
   async (formData) => {
-    const response = await api.post(
-      "/auth/login",
-      formData,
-      {
-        withCredentials: true,
-      }
-    );
+    const response = await api.post('/auth/login', formData, {
+      withCredentials: true,
+    });
 
     return response.data;
   }
 );
 
 export const logoutUser = createAsyncThunk(
-  "/auth/logout",
+  '/auth/logout',
 
   async () => {
     const response = await api.post(
-      "/auth/logout",
+      '/auth/logout',
       {},
       {
         withCredentials: true,
@@ -56,26 +48,22 @@ export const logoutUser = createAsyncThunk(
 );
 
 export const checkAuth = createAsyncThunk(
-  "/auth/checkauth",
+  '/auth/checkauth',
 
   async () => {
-    const response = await api.get(
-      "/auth/check-auth",
-      {
-        withCredentials: true,
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
-      }
-    );
+    const response = await api.get('/auth/check-auth', {
+      withCredentials: true,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      },
+    });
 
     return response.data;
   }
 );
 
 const authSlice = createSlice({
-  name: "auth",
+  name: 'auth',
   initialState,
   reducers: {
     setUser: (state, action) => {},
@@ -99,8 +87,6 @@ const authSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
-        console.log(action);
-
         state.isLoading = false;
         state.user = action.payload.success ? action.payload.user : null;
         state.isAuthenticated = action.payload.success;

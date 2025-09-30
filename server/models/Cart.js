@@ -1,22 +1,20 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const CartSchema = new mongoose.Schema(
   {
-    // 🔹 userId sekarang opsional
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
     },
-    // 🔹 sessionId untuk melacak keranjang tamu
     sessionId: {
       type: String,
-      index: true, // index untuk pencarian lebih cepat
+      index: true,
     },
     items: [
       {
         productId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Product",
+          ref: 'Product',
           required: true,
         },
         quantity: {
@@ -27,6 +25,8 @@ const CartSchema = new mongoose.Schema(
         variant: {
           name: { type: String, required: true },
           price: { type: Number, required: true },
+          salePrice: { type: Number, default: 0 },
+          totalStock: { type: Number, default: 0 },
         },
       },
     ],
@@ -40,7 +40,6 @@ const CartSchema = new mongoose.Schema(
   }
 );
 
-// Tambahkan index gabungan
 CartSchema.index({ userId: 1, sessionId: 1 });
 
-module.exports = mongoose.model("Cart", CartSchema);
+module.exports = mongoose.model('Cart', CartSchema);

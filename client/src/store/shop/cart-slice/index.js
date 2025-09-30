@@ -1,166 +1,171 @@
-import api from "../../../utils/axios";;
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import api from '../../../utils/axios';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 const initialState = {
-  cartItems: { items: [], cartTotal: 0 }, // Sesuaikan dengan struktur data yang benar
+  cartItems: { items: [], cartTotal: 0 },
   isLoading: false,
   error: null,
+  sessionId: null,
 };
 
-// =============================
-// ADD TO CART
-// =============================
 export const addToCart = createAsyncThunk(
-  "cart/addToCart",
-  async ({ userId, productId, quantity, variant }, { rejectWithValue }) => {
+  'cart/addToCart',
+  async ({ userId, sessionId, productId, quantity, variant }, { rejectWithValue }) => {
     try {
-      const response = await api.post(
-        "/shop/cart/add",
-        {
-          userId,
-          productId,
-          quantity,
-          variant, // 👈 wajib dikirim
-        }
-      );
+      const response = await api.post('/shop/cart/add', {
+        userId: userId || null,
+        sessionId: sessionId || null,
+        productId,
+        quantity,
+        variant,
+      });
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+      return rejectWithValue(err.response?.data || { message: err.message });
     }
   }
 );
 
-// =============================
-// FETCH CART
-// =============================
 export const fetchCartItems = createAsyncThunk(
-  "cart/fetchCartItems",
+  'cart/fetchCartItems',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.get(
-        `/shop/cart/get/${id}`
-      );
+      const response = await api.get(`/shop/cart/get/${id}`);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+      return rejectWithValue(err.response?.data || { message: err.message });
     }
   }
 );
 
-// =============================
-// DELETE CART ITEM
-// =============================
 export const deleteCartItem = createAsyncThunk(
-  "cart/deleteCartItem",
-  async ({ userId, productId, variantName }, { rejectWithValue }) => {
+  'cart/deleteCartItem',
+  async ({ id, productId, variantName }, { rejectWithValue }) => {
     try {
-      const response = await api.delete(
-        `/shop/cart/${userId}/${productId}/${variantName}`
-      );
+      const response = await api.delete(`/shop/cart/${id}/${productId}/${variantName}`);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+      return rejectWithValue(err.response?.data || { message: err.message });
     }
   }
 );
 
-// =============================
-// UPDATE CART QUANTITY
-// =============================
 export const updateCartQuantity = createAsyncThunk(
-  "cart/updateCartQuantity",
-  async ({ userId, productId, variantName, quantity }, { rejectWithValue }) => {
+  'cart/updateCartQuantity',
+  async ({ userId, sessionId, productId, variantName, quantity }, { rejectWithValue }) => {
     try {
-      const response = await api.put(
-        "/shop/cart/update-cart",
-        {
-          id: userId,
-          productId,
-          variantName,
-          quantity,
-        }
-      );
+      const response = await api.put('/shop/cart/update-cart', {
+        userId,
+        sessionId,
+        productId,
+        variantName,
+        quantity,
+      });
       return response.data;
-    } catch (err)      {
-      return rejectWithValue(err.response?.data || err.message);
+    } catch (err) {
+      return rejectWithValue(err.response?.data || { message: err.message });
     }
   }
 );
 
-// =============================
-// SLICE
-// =============================
+export const mergeCart = createAsyncThunk(
+  'cart/mergeCart',
+  async ({ userId, sessionId, action }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/shop/cart/merge-cart', {
+        userId,
+        sessionId,
+        action,
+      });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || { message: err.message });
+    }
+  }
+);
+
 const shoppingCartSlice = createSlice({
-  name: "shoppingCart",
+  name: 'shoppingCart',
   initialState,
-  // 🔹 BAGIAN PENTING DITAMBAHKAN DI SINI 🔹
   reducers: {
     clearCart: (state) => {
       state.cartItems = { items: [], cartTotal: 0 };
+      state.sessionId = null;
+      state.error = null;
+    },
+    clearError: (state) => {
+      state.error = null;
+    },
+    setSessionId: (state, action) => {
+      state.sessionId = action.payload;
     },
   },
   extraReducers: (builder) => {
     builder
-      // ADD TO CART
       .addCase(addToCart.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.cartItems = action.payload.data;
+        if (action.payload?.success) {
+          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+          if (action.payload.data?.sessionId) {
+            state.sessionId = action.payload.data.sessionId;
+          }
+        }
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || 'Gagal menambahkan ke keranjang';
       })
 
-      // FETCH CART
       .addCase(fetchCartItems.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(fetchCartItems.fulfilled, (state, action) => {
         state.isLoading = false;
-        // Pastikan state diupdate dengan benar jika data tidak ada
-        state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+        if (action.payload?.success) {
+          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+        }
       })
       .addCase(fetchCartItems.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || 'Gagal memuat keranjang';
       })
 
-      // UPDATE CART QUANTITY
       .addCase(updateCartQuantity.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(updateCartQuantity.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.cartItems = action.payload.data;
+        if (action.payload?.success) {
+          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+        }
       })
       .addCase(updateCartQuantity.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || 'Gagal mengupdate keranjang';
       })
 
-      // DELETE CART ITEM
       .addCase(deleteCartItem.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(deleteCartItem.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.cartItems = action.payload.data;
+        if (action.payload?.success) {
+          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+        }
       })
       .addCase(deleteCartItem.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || 'Gagal menghapus item';
       });
   },
 });
 
-// 🔹 PASTIKAN ANDA MENGEKSPOR ACTION-NYA 🔹
-export const { clearCart } = shoppingCartSlice.actions;
-
+export const { clearCart, clearError, setSessionId } = shoppingCartSlice.actions;
 export default shoppingCartSlice.reducer;

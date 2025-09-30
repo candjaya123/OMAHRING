@@ -1,8 +1,8 @@
-import { filterOptions } from "@/config";
-import { Fragment } from "react";
-import { Label } from "../ui/label";
-import { Checkbox } from "../ui/checkbox";
-import { Separator } from "../ui/separator";
+import { filterOptions } from '@/config';
+import { Fragment } from 'react';
+import { Label } from '../ui/label';
+import { Checkbox } from '../ui/checkbox';
+import { Separator } from '../ui/separator';
 
 function ProductFilter({ filters, handleFilter }) {
   return (
@@ -12,12 +12,12 @@ function ProductFilter({ filters, handleFilter }) {
       </div>
       <div className="p-4 space-y-4">
         {Object.keys(filterOptions).map((keyItem) => (
-          <Fragment>
+          <Fragment key={keyItem}>
             <div>
               <h3 className="text-base font-bold">{keyItem}</h3>
               <div className="grid gap-2 mt-2">
                 {filterOptions[keyItem].map((option) => (
-                  <Label className="flex font-medium items-center gap-2 ">
+                  <Label key={option.id} className="flex font-medium items-center gap-2 ">
                     <Checkbox
                       checked={
                         filters &&

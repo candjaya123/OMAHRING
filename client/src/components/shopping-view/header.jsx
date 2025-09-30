@@ -1,14 +1,9 @@
-import { Bird, LogOut, Menu, ShoppingCart, UserCog } from "lucide-react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
-import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { Button } from "../ui/button";
-import { useDispatch, useSelector } from "react-redux";
-import { shoppingViewHeaderMenuItems } from "@/config";
+import { LayoutDashboard, LogOut, Menu, ShoppingCart, User, UserCog } from 'lucide-react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
+import { Button } from '../ui/button';
+import { useDispatch, useSelector } from 'react-redux';
+import { shoppingViewHeaderMenuItems } from '@/config';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +11,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "../ui/avatar";
-import { logoutUser } from "@/store/auth-slice";
-import UserCartWrapper from "./cart-wrapper";
-import { useEffect, useState } from "react";
-import { fetchCartItems } from "@/store/shop/cart-slice";
+} from '../ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { logoutUser } from '@/store/auth-slice';
+import UserCartWrapper from './cart-wrapper';
+import { useEffect, useState } from 'react';
+import { fetchCartItems } from '@/store/shop/cart-slice';
+import { v4 as uuidv4 } from 'uuid';
+import logoOmahring from '@/assets/logo-omahring.png';
 
 function MenuItems() {
   const navigate = useNavigate();
@@ -31,15 +28,13 @@ function MenuItems() {
 
   function handleNavigate(menuItem) {
     setOpenDropdown(false); // Close dropdown after clicking
-    sessionStorage.removeItem("filters");
+    sessionStorage.removeItem('filters');
     const currentFilter =
-      menuItem.id !== "home" && menuItem.id !== "informasi"
-        ? { category: [menuItem.id] }
-        : null;
+      menuItem.id !== 'home' && menuItem.id !== 'informasi' ? { category: [menuItem.id] } : null;
 
-    sessionStorage.setItem("filters", JSON.stringify(currentFilter));
+    sessionStorage.setItem('filters', JSON.stringify(currentFilter));
 
-    if (location.pathname.includes("listing") && currentFilter !== null) {
+    if (location.pathname.includes('listing') && currentFilter !== null) {
       setSearchParams(new URLSearchParams(`?category=${menuItem.id}`));
     } else {
       navigate(menuItem.path);
@@ -50,7 +45,7 @@ function MenuItems() {
     <nav className="flex flex-col mb-3 lg:mb-0 lg:items-center gap-6 lg:flex-row relative">
       {/* Beranda */}
       <div
-        onClick={() => handleNavigate({ id: "home", path: "/shop/home" })}
+        onClick={() => handleNavigate({ id: 'home', path: '/shop/home' })}
         className="text-base font-semibold text-gray-800 cursor-pointer hover:text-orange-500 transition-colors duration-300"
         role="button"
       >
@@ -69,14 +64,14 @@ function MenuItems() {
             Toko <span className="ml-1 text-sm">▼</span>
           </div>
         </DropdownMenuTrigger>
-        
+
         <DropdownMenuContent
           className="w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-2"
           onMouseEnter={() => setOpenDropdown(true)}
           onMouseLeave={() => setOpenDropdown(false)}
         >
           {shoppingViewHeaderMenuItems
-            .filter((item) => item.id !== "home" && item.id !== "search")
+            .filter((item) => item.id !== 'home' && item.id !== 'search')
             .map((menuItem) => (
               <DropdownMenuItem
                 key={menuItem.id}
@@ -94,7 +89,7 @@ function MenuItems() {
 
       {/* Informasi */}
       <div
-        onClick={() => handleNavigate({ id: "informasi", path: "/shop/blog" })}
+        onClick={() => handleNavigate({ id: 'informasi', path: '/shop/blog' })}
         className="text-base font-semibold text-gray-800 cursor-pointer hover:text-orange-500 transition-colors duration-300"
         role="button"
       >
@@ -105,25 +100,26 @@ function MenuItems() {
 }
 
 function HeaderRightContent() {
-  const { user } = useSelector((state) => state.auth);
+  // const { user } = useSelector((state) => state.auth);
   const { cartItems } = useSelector((state) => state.shopCart);
   const [openCartSheet, setOpenCartSheet] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const sessionId = localStorage.getItem('sessionId');
+  const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
 
   function handleLogout() {
     dispatch(logoutUser());
-    navigate("/shop/login");
+    localStorage.removeItem('sessionId');
+    navigate('/shop/home');
   }
 
   useEffect(() => {
-    if (user?.id) {
-      dispatch(fetchCartItems(user.id));
-    }
-  }, [dispatch, user?.id]);
+    dispatch(fetchCartItems(user?.id || sessionId));
+  }, [dispatch, user?.id, sessionId]);
 
   return (
-    <div className="flex lg:items-center lg:flex-row flex-col gap-4">
+    <div className="flex lg:items-center lg:flex-row flex-col gap-6">
       <Sheet open={openCartSheet} onOpenChange={setOpenCartSheet}>
         <Button
           onClick={() => setOpenCartSheet(true)}
@@ -137,42 +133,91 @@ function HeaderRightContent() {
           </span>
           <span className="sr-only">Keranjang</span>
         </Button>
-        <UserCartWrapper
-          setOpenCartSheet={setOpenCartSheet}
-          cartItems={cartItems?.items || []}
-        />
+        {!user && (
+          <div className="flex flex-col lg:hidden items-start gap-4">
+            <Link to="/shop/account">
+              <User className="w-6 h-6" />
+            </Link>
+            <Link to="/auth/login">
+              <button className="cursor-pointer px-4 py-2 text-orange-500 bg-white border border-orange-500 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
+                <p className="p2-b">Masuk</p>
+              </button>
+            </Link>
+            <Link to="/auth/register">
+              <button className="cursor-pointer px-4 py-2 text-white bg-orange-500 hover:bg-orange-500/80 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
+                <p className="p2-b">Daftar</p>
+              </button>
+            </Link>
+          </div>
+        )}
+        <UserCartWrapper setOpenCartSheet={setOpenCartSheet} cartItems={cartItems?.items || []} />
       </Sheet>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Avatar className="bg-black ring-2 ring-orange-500 cursor-pointer">
-            <AvatarFallback className="bg-black text-white font-extrabold">
-              {user?.userName ? user.userName[0].toUpperCase() : "U"}
-            </AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" className="w-56 bg-white border-gray-200 shadow-md">
-          <DropdownMenuLabel className="text-gray-800">
-            Masuk sebagai {user?.userName || "Pengguna"}
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => navigate("/shop/account")}
-            className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
+      {user ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center gap-4">
+              <Avatar className="bg-black ring-2 ring-orange-500 cursor-pointer">
+                <AvatarFallback className="bg-black text-white font-extrabold">
+                  {user?.userName ? user.userName[0].toUpperCase() : 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-gray-800">{user?.userName}</p>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            side="bottom"
+            className="w-56 bg-white border-gray-200 shadow-md"
           >
-            <UserCog className="mr-2 h-4 w-4" />
-            Akun
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={handleLogout}
-            className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Keluar
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuLabel className="text-gray-800">
+              Masuk sebagai {user?.userName || 'Pengguna'}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {user.role === 'admin' || user.role === 'manager' ? (
+              <DropdownMenuItem
+                onClick={() => navigate('/admin/dashboard')}
+                className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
+              >
+                <LayoutDashboard className="mr-2 h-5 w-5" />
+                Dashboard
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => navigate('/shop/account')}
+                className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
+              >
+                <UserCog className="mr-2 h-5 w-5" />
+                Akun
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
+            >
+              <LogOut className="mr-2 h-5 w-5" />
+              Keluar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <div className="hidden lg:flex items-center gap-4">
+          <Link to="/shop/account">
+            <User className="w-6 h-6" />
+          </Link>
+          <Link to="/auth/login">
+            <button className="cursor-pointer px-4 py-2 text-orange-500 bg-white border border-orange-500 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
+              <p className="p2-b">Masuk</p>
+            </button>
+          </Link>
+          <Link to="/auth/register">
+            <button className="cursor-pointer px-4 py-2 text-white bg-orange-500 hover:bg-orange-500/80 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
+              <p className="p2-b">Daftar</p>
+            </button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -181,8 +226,8 @@ function ShoppingHeader() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/shop/home" className="flex items-center gap-2">
-          <Bird className="h-8 w-8 text-orange-500" />
+        <Link to="/shop/home" className="flex items-center">
+          <img src={logoOmahring} alt="Omahring" className="h-8" />
           <span className="font-bold text-xl text-gray-800">Omahring</span>
         </Link>
         <div className="hidden lg:flex lg:items-center lg:gap-6">

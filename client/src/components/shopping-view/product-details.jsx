@@ -1,21 +1,21 @@
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Dialog, DialogContent } from "../ui/dialog";
-import { Button } from "../ui/button";
-import { useToast } from "../ui/use-toast";
-import { Separator } from "../ui/separator";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Avatar, AvatarFallback } from "../ui/avatar";
-import StarRatingComponent from "../common/star-rating";
-import { addToCart, fetchCartItems } from "@/store/shop/cart-slice"; // Tambah fetchCartItems
-import { setProductDetails } from "@/store/shop/products-slice";
-import { addReview, getReviews } from "@/store/shop/review-slice";
-import { v4 as uuidv4 } from "uuid";
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Dialog, DialogContent } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { useToast } from '../ui/use-toast';
+import { Separator } from '../ui/separator';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import StarRatingComponent from '../common/star-rating';
+import { addToCart, fetchCartItems } from '@/store/shop/cart-slice'; // Tambah fetchCartItems
+import { setProductDetails } from '@/store/shop/products-slice';
+import { addReview, getReviews } from '@/store/shop/review-slice';
+import { v4 as uuidv4 } from 'uuid';
 
 function ProductDetailsDialog({ open, setOpen, productDetails }) {
   const [selectedVariant, setSelectedVariant] = useState(null);
-  const [reviewMsg, setReviewMsg] = useState("");
+  const [reviewMsg, setReviewMsg] = useState('');
   const [rating, setRating] = useState(0);
 
   const dispatch = useDispatch();
@@ -27,8 +27,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
     if (productDetails?.variants?.length > 0) {
       // default pilih varian dengan stok > 0
       const defaultVariant =
-        productDetails.variants.find((v) => v.totalStock > 0) ||
-        productDetails.variants[0];
+        productDetails.variants.find((v) => v.totalStock > 0) || productDetails.variants[0];
       setSelectedVariant(defaultVariant);
     }
     if (productDetails?._id) {
@@ -40,35 +39,32 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
   const handleAddToCart = () => {
     if (!selectedVariant) return;
 
-    let sessionId = localStorage.getItem("sessionId");
-    if (!user?._id && !sessionId) {
+    let sessionId = localStorage.getItem('sessionId');
+    if (!user?.id && !sessionId) {
       sessionId = `guest-${uuidv4()}`;
-      localStorage.setItem("sessionId", sessionId);
+      localStorage.setItem('sessionId', sessionId);
     }
 
     dispatch(
       addToCart({
-        userId: user?._id || null, // jika guest bisa null
+        userId: user?.id || null, // jika guest bisa null
         productId: productDetails?._id,
         quantity: 1,
         variant: {
           name: selectedVariant.name,
-          price:
-            selectedVariant.salePrice > 0
-              ? selectedVariant.salePrice
-              : selectedVariant.price,
+          price: selectedVariant.salePrice > 0 ? selectedVariant.salePrice : selectedVariant.price,
         },
       })
     ).then((result) => {
       if (result.payload?.success) {
-        toast({ title: "Produk ditambahkan ke keranjang." });
+        toast({ title: 'Produk ditambahkan ke keranjang.' });
         // Refresh keranjang
-        const id = user?._id || sessionId;
+        const id = user?.id || sessionId;
         dispatch(fetchCartItems(id));
       } else {
         toast({
-          title: "Gagal menambahkan ke keranjang.",
-          variant: "destructive",
+          title: 'Gagal menambahkan ke keranjang.',
+          variant: 'destructive',
         });
       }
     });
@@ -76,8 +72,8 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
 
   // === ADD REVIEW ===
   const handleAddReview = () => {
-    if (!user?._id) {
-      toast({ title: "Anda harus login untuk menulis ulasan.", variant: "destructive" });
+    if (!user?.id) {
+      toast({ title: 'Anda harus login untuk menulis ulasan.', variant: 'destructive' });
       return;
     }
 
@@ -92,9 +88,9 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
     ).then((data) => {
       if (data.payload.success) {
         setRating(0);
-        setReviewMsg("");
+        setReviewMsg('');
         dispatch(getReviews(productDetails?._id));
-        toast({ title: "Ulasan berhasil ditambahkan!" });
+        toast({ title: 'Ulasan berhasil ditambahkan!' });
       }
     });
   };
@@ -103,7 +99,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
     setOpen(false);
     dispatch(setProductDetails(null));
     setRating(0);
-    setReviewMsg("");
+    setReviewMsg('');
     setSelectedVariant(null);
   };
 
@@ -134,9 +130,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                 {productDetails.title}
               </h1>
-              <p className="text-gray-600 text-base mt-2">
-                {productDetails.description}
-              </p>
+              <p className="text-gray-600 text-base mt-2">{productDetails.description}</p>
             </div>
 
             {/* Pemilihan Varian */}
@@ -146,20 +140,16 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
                 {productDetails.variants.map((variant) => (
                   <Button
                     key={variant.name}
-                    variant={
-                      selectedVariant?.name === variant.name
-                        ? "default"
-                        : "outline"
-                    }
+                    variant={selectedVariant?.name === variant.name ? 'default' : 'outline'}
                     onClick={() => setSelectedVariant(variant)}
                     disabled={variant.totalStock === 0}
                     className={`
                       ${
                         selectedVariant?.name === variant.name
-                          ? "bg-orange-500 hover:bg-orange-600 border-orange-500 text-white"
-                          : "bg-white"
+                          ? 'bg-orange-500 hover:bg-orange-600 border-orange-500 text-white'
+                          : 'bg-white'
                       }
-                      ${variant.totalStock === 0 ? "cursor-not-allowed line-through" : ""}
+                      ${variant.totalStock === 0 ? 'cursor-not-allowed line-through' : ''}
                     `}
                   >
                     {variant.name}
@@ -174,17 +164,15 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
                 <div className="flex items-baseline gap-3">
                   {selectedVariant.salePrice > 0 && (
                     <p className="text-2xl md:text-3xl font-bold text-red-600">
-                      Rp {selectedVariant.salePrice.toLocaleString("id-ID")}
+                      Rp {selectedVariant.salePrice.toLocaleString('id-ID')}
                     </p>
                   )}
                   <p
                     className={`text-xl md:text-2xl font-bold ${
-                      selectedVariant.salePrice > 0
-                        ? "line-through text-gray-500"
-                        : "text-gray-900"
+                      selectedVariant.salePrice > 0 ? 'line-through text-gray-500' : 'text-gray-900'
                     }`}
                   >
-                    Rp {selectedVariant.price.toLocaleString("id-ID")}
+                    Rp {selectedVariant.price.toLocaleString('id-ID')}
                   </p>
                 </div>
                 <p className="text-sm mt-1 text-gray-600">
@@ -195,9 +183,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
 
             <div className="flex items-center gap-2">
               <StarRatingComponent rating={averageReview} />
-              <span className="text-gray-500 text-sm">
-                ({averageReview.toFixed(1)})
-              </span>
+              <span className="text-gray-500 text-sm">({averageReview.toFixed(1)})</span>
             </div>
 
             {/* Tombol Aksi */}
@@ -208,8 +194,8 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
                 disabled={!selectedVariant || selectedVariant.totalStock === 0}
               >
                 {!selectedVariant || selectedVariant.totalStock === 0
-                  ? "Stok Habis"
-                  : "Tambah ke Keranjang"}
+                  ? 'Stok Habis'
+                  : 'Tambah ke Keranjang'}
               </Button>
             </div>
 
@@ -222,44 +208,30 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
                 reviews.map((review) => (
                   <div key={review._id} className="flex gap-4">
                     <Avatar className="w-10 h-10 border">
-                      <AvatarFallback>
-                        {review.userName[0].toUpperCase()}
-                      </AvatarFallback>
+                      <AvatarFallback>{review.userName[0].toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="font-bold text-gray-900">
-                        {review.userName}
-                      </h3>
+                      <h3 className="font-bold text-gray-900">{review.userName}</h3>
                       <StarRatingComponent rating={review.reviewValue} />
-                      <p className="text-gray-600 text-sm mt-1">
-                        {review.reviewMessage}
-                      </p>
+                      <p className="text-gray-600 text-sm mt-1">{review.reviewMessage}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-500">
-                  Belum ada ulasan untuk produk ini.
-                </p>
+                <p className="text-sm text-gray-500">Belum ada ulasan untuk produk ini.</p>
               )}
             </div>
 
             {/* Form Tambah Ulasan */}
             <div className="flex flex-col gap-2 pt-4 border-t">
               <Label className="font-semibold text-gray-800">Tulis Ulasan Anda</Label>
-              <StarRatingComponent
-                rating={rating}
-                handleRatingChange={setRating}
-              />
+              <StarRatingComponent rating={rating} handleRatingChange={setRating} />
               <Input
                 value={reviewMsg}
                 onChange={(e) => setReviewMsg(e.target.value)}
                 placeholder="Bagaimana pendapat Anda tentang produk ini?"
               />
-              <Button
-                onClick={handleAddReview}
-                disabled={reviewMsg.trim() === "" || rating === 0}
-              >
+              <Button onClick={handleAddReview} disabled={reviewMsg.trim() === '' || rating === 0}>
                 Kirim Ulasan
               </Button>
             </div>

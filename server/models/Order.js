@@ -1,71 +1,95 @@
-// const mongoose = require("mongoose");
+const mongoose = require('mongoose');
+const { Schema, model, Types } = mongoose;
 
-// const OrderSchema = new mongoose.Schema({
-//   userId: String,
-//   cartId: String,
-//   cartItems: [
-//     {
-//       productId: String,
-//       title: String,
-//       image: String,
-//       price: String,
-//       quantity: Number,
-//     },
-//   ],
-//   addressInfo: {
-//     addressId: String,
-//     address: String,
-//     city: String,
-//     pincode: String,
-//     phone: String,
-//     notes: String,
-//   },
-//   orderStatus: String,
-//   paymentMethod: String,
-//   paymentStatus: String,
-//   totalAmount: Number,
-//   orderDate: Date,
-//   orderUpdateDate: Date,
-//   paymentId: String,
-//   payerId: String,
-// });
+const OrderItemSchema = new Schema(
+  {
+    productId: { type: Types.ObjectId, ref: 'Product', required: true },
+    title: { type: String, required: true },
+    image: { type: String },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    variantName: { type: String, required: true },
+  },
+  { _id: false }
+);
 
-// module.exports = mongoose.model("Order", OrderSchema);
-
-
-// File: models/Order.js
-
-const mongoose = require("mongoose");
-
-const OrderSchema = new mongoose.Schema({
-  userId: String,
-  customerName: String, // 🔹 MENAMBAHKAN NAMA PELANGGAN
-  cartId: String,
-  cartItems: [
-    {
-      productId: String,
-      title: String,
-      image: String,
-      price: Number, // 🔹 Diubah ke Number
-      quantity: Number,
-    },
-  ],
-  addressInfo: {
-    addressId: String,
+const AddressInfoSchema = new Schema(
+  {
     address: String,
     city: String,
-    kodePos: String, // 🔹 Diubah dari pincode
+    pincode: String,
     phone: String,
     notes: String,
   },
-  orderStatus: String, // Contoh: 'pending', 'confirmed', 'shipping', 'delivered', 'rejected'
-  paymentMethod: String,
-  paymentStatus: String,
-  totalAmount: Number, // 🔹 Pastikan ini Number
-  orderDate: { type: Date, default: Date.now },
-  orderUpdateDate: Date,
-  paymentId: String,
-  payerId: String,
-});
+  { _id: false }
+);
 
-module.exports = mongoose.model("Order", OrderSchema);
+const MidtransSchema = new Schema(
+  {
+    orderId: String,
+    snapToken: String, // ← TAMBAHKAN
+    tokenExpiry: Date, // ← TAMBAHKAN
+    redirectUrl: String, // ← TAMBAHKAN
+    transactionId: String,
+    transactionStatus: String,
+    fraudStatus: String,
+    paymentType: String,
+    statusCode: String,
+    grossAmount: String,
+    signatureKey: String,
+    rawNotification: Schema.Types.Mixed,
+  },
+  { _id: false }
+);
+
+const OrderSchema = new Schema(
+  {
+    userId: { type: Types.ObjectId, ref: 'User', required: true, index: true },
+    customerName: { type: String, required: true },
+    email: { type: String, lowercase: true, trim: true },
+    cartId: { type: Types.ObjectId, ref: 'Cart' },
+
+    cartItems: { type: [OrderItemSchema], required: true },
+    addressInfo: { type: AddressInfoSchema },
+
+    totalAmount: { type: Number, required: true, min: 0 },
+    orderStatus: {
+      type: String,
+      // enum: ['pending', 'confirmed', 'cancelled', 'expired', 'challenge', 'needs_review'],
+      enum: [
+        'pending', // baru dibuat
+        'confirmed', // sudah dibayar / valid
+        'processing', // sedang diproses
+        'shipped', // dalam perjalanan
+        'delivered', // sampai ke customer
+        'cancelled', // dibatalkan
+        'expired', // kadaluarsa
+      ],
+      default: 'pending',
+      index: true,
+    },
+    paymentStatus: {
+      type: String,
+      // enum: ['unpaid', 'pending', 'paid', 'failed', 'refund'],
+      enum: [
+        'unpaid', // belum mulai transaksi
+        'pending', // sedang menunggu pembayaran
+        'paid', // settlement / capture
+        'failed', // deny / cancel / expire
+        'refund', // refund / partial_refund
+        'chargeback', // chargeback
+      ],
+      default: 'unpaid',
+      index: true,
+    },
+    paymentMethod: { type: String, default: 'midtrans' },
+
+    midtrans: { type: MidtransSchema },
+
+    orderDate: { type: Date, default: Date.now },
+    orderUpdateDate: { type: Date },
+  },
+  { timestamps: true }
+);
+
+module.exports = model('Order', OrderSchema);

@@ -1,25 +1,4 @@
-// const mongoose = require("mongoose");
-
-// const ProductSchema = new mongoose.Schema(
-//   {
-//     image: String,
-//     title: String,
-//     description: String,
-//     category: String,
-//     brand: String,
-//     price: Number,
-//     salePrice: Number,
-//     totalStock: Number,
-//     averageReview: Number,
-//   },
-//   { timestamps: true }
-// );
-
-// module.exports = mongoose.model("Product", ProductSchema);
-
-// File: models/Product.js
-
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema(
   {
@@ -27,10 +6,10 @@ const ProductSchema = new mongoose.Schema(
     title: String,
     description: String,
     category: String,
-    brand: String, // Opsional, bisa custom
-    variants: [ // 🔹 Menambahkan varian produk
+    brand: String,
+    variants: [
       {
-        name: String, // Contoh: "Merah - L", "Biru - M"
+        name: String,
         price: Number,
         salePrice: Number,
         totalStock: Number,
@@ -41,4 +20,4 @@ const ProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Product", ProductSchema);
+module.exports = mongoose.model('Product', ProductSchema);

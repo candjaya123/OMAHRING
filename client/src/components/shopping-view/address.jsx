@@ -1,23 +1,23 @@
-import { useEffect, useState } from "react";
-import CommonForm from "../common/form";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { addressFormControls } from "@/config";
-import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useState } from 'react';
+import CommonForm from '../common/form';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { addressFormControls } from '@/config';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   addNewAddress,
   deleteAddress,
   editaAddress,
   fetchAllAddresses,
-} from "@/store/shop/address-slice";
-import AddressCard from "./address-card";
-import { useToast } from "../ui/use-toast";
+} from '@/store/shop/address-slice';
+import AddressCard from './address-card';
+import { useToast } from '../ui/use-toast';
 
 const initialAddressFormData = {
-  address: "",
-  city: "",
-  phone: "",
-  pincode: "",
-  notes: "",
+  address: '',
+  city: '',
+  phone: '',
+  pincode: '',
+  notes: '',
 };
 
 function Address({ setCurrentSelectedAddress, selectedId }) {
@@ -34,8 +34,8 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
     if (addressList.length >= 3 && currentEditedId === null) {
       setFormData(initialAddressFormData);
       toast({
-        title: "You can add max 3 addresses",
-        variant: "destructive",
+        title: 'You can add max 3 addresses',
+        variant: 'destructive',
       });
 
       return;
@@ -54,7 +54,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
             setCurrentEditedId(null);
             setFormData(initialAddressFormData);
             toast({
-              title: "Address updated successfully",
+              title: 'Address updated successfully',
             });
           }
         })
@@ -68,20 +68,18 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
             dispatch(fetchAllAddresses(user?.id));
             setFormData(initialAddressFormData);
             toast({
-              title: "Address added successfully",
+              title: 'Address added successfully',
             });
           }
         });
   }
 
   function handleDeleteAddress(getCurrentAddress) {
-    dispatch(
-      deleteAddress({ userId: user?.id, addressId: getCurrentAddress._id })
-    ).then((data) => {
+    dispatch(deleteAddress({ userId: user?.id, addressId: getCurrentAddress._id })).then((data) => {
       if (data?.payload?.success) {
         dispatch(fetchAllAddresses(user?.id));
         toast({
-          title: "Address deleted successfully",
+          title: 'Address deleted successfully',
         });
       }
     });
@@ -101,7 +99,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
 
   function isFormValid() {
     return Object.keys(formData)
-      .map((key) => formData[key].trim() !== "")
+      .map((key) => formData[key].trim() !== '')
       .every((item) => item);
   }
 
@@ -109,14 +107,13 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
     dispatch(fetchAllAddresses(user?.id));
   }, [dispatch]);
 
-  console.log(addressList, "addressList");
-
   return (
     <Card>
       <div className="mb-5 p-3 grid grid-cols-1 sm:grid-cols-2  gap-2">
         {addressList && addressList.length > 0
           ? addressList.map((singleAddressItem) => (
               <AddressCard
+                key={singleAddressItem._id}
                 selectedId={selectedId}
                 handleDeleteAddress={handleDeleteAddress}
                 addressInfo={singleAddressItem}
@@ -127,16 +124,14 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
           : null}
       </div>
       <CardHeader>
-        <CardTitle>
-          {currentEditedId !== null ? "Edit Address" : "Add New Address"}
-        </CardTitle>
+        <CardTitle>{currentEditedId !== null ? 'Edit Address' : 'Add New Address'}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <CommonForm
           formControls={addressFormControls}
           formData={formData}
           setFormData={setFormData}
-          buttonText={currentEditedId !== null ? "Edit" : "Add"}
+          buttonText={currentEditedId !== null ? 'Edit' : 'Add'}
           onSubmit={handleManageAddress}
           isBtnDisabled={!isFormValid()}
         />
