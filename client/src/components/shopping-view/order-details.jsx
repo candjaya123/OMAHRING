@@ -62,6 +62,14 @@ function ShoppingOrderDetailsView({ orderDetails }) {
                   {orderDetails.orderStatus?.toUpperCase()}
                 </Badge>
               </div>
+              {orderDetails.trackingNumber && (
+                <div className="flex justify-between mt-2 pt-2 border-t border-dashed border-gray-200">
+                  <span className="text-muted-foreground font-semibold">Resi Pengiriman:</span>
+                  <span className="font-mono text-orange-600 bg-orange-50 px-2 py-0.5 rounded font-bold">
+                    {orderDetails.trackingNumber}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="space-y-3">

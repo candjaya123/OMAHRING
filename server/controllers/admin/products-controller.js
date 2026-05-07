@@ -1,4 +1,4 @@
-const Product = require('../../models/Product');
+const supabase = require('../../config/supabase');
 const { imageUploadUtil } = require('../../helpers/cloudinary');
 
 const handleImageUpload = async (req, res) => {
@@ -34,7 +34,18 @@ const handleImageUpload = async (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const { title, description, category, brand, variants, image, averageReview } = req.body;
+    const {
+      title,
+      description,
+      media,
+      category,
+      attributes,
+      variationOptions,
+      variants,
+      shipping,
+      orderTemplate,
+      averageReview,
+    } = req.body;
 
     // Validasi dasar
     if (!title?.trim()) {
@@ -44,89 +55,46 @@ const addProduct = async (req, res) => {
       });
     }
 
-    if (!description?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Deskripsi produk wajib diisi.',
-      });
-    }
-
-    if (!category?.trim()) {
+    if (!category || !Array.isArray(category) || category.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'Kategori produk wajib diisi.',
       });
     }
 
-    if (!image?.trim()) {
+    if (!media || !media.images || media.images.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Gambar produk wajib diupload.',
+        message: 'Minimal satu gambar produk wajib diupload.',
       });
     }
 
-    if (!variants || variants.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Produk harus memiliki setidaknya satu varian.',
-      });
-    }
+    const { data: savedProduct, error: insertError } = await supabase
+      .from('products')
+      .insert({
+        title: title.trim(),
+        description,
+        media,
+        category,
+        attributes,
+        variationOptions,
+        variants,
+        shipping,
+        orderTemplate,
+        averageReview: convertAndValidateNumber(averageReview, 'Average review', 0),
+      })
+      .select()
+      .single();
 
-    let processedVariants;
-    try {
-      processedVariants = processVariants(variants);
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    for (let i = 0; i < processedVariants.length; i++) {
-      if (!processedVariants[i].name.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: `Nama varian #${i + 1} wajib diisi.`,
-        });
-      }
-    }
-
-    const processedAverageReview = convertAndValidateNumber(averageReview, 'Average review', 0);
-    if (processedAverageReview > 5) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rating rata-rata tidak boleh lebih dari 5.',
-      });
-    }
-
-    const newProduct = new Product({
-      title: title.trim(),
-      description: description.trim(),
-      category: category.trim(),
-      brand: brand?.trim() || '',
-      variants: processedVariants, // 🔹 Gunakan variants yang sudah diproses
-      image,
-      averageReview: processedAverageReview,
-    });
-
-    const savedProduct = await newProduct.save();
+    if (insertError) throw insertError;
 
     return res.status(201).json({
       success: true,
       message: 'Produk berhasil ditambahkan.',
-      data: savedProduct,
+      data: { ...savedProduct, _id: savedProduct.id },
     });
   } catch (error) {
     console.error('Error saat menambah produk:', error);
-
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validasi gagal: ' + messages.join(', '),
-      });
-    }
-
     return res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan pada server: ' + error.message,
@@ -137,45 +105,14 @@ const addProduct = async (req, res) => {
 const editProduct = async (req, res) => {
   try {
     const { id } = req.params;
+    const { data: updatedProduct, error: updateError } = await supabase
+      .from('products')
+      .update(req.body)
+      .eq('id', id)
+      .select()
+      .single();
 
-    const updatedData = { ...req.body };
-
-    if (updatedData.variants && Array.isArray(updatedData.variants)) {
-      try {
-        updatedData.variants = processVariants(updatedData.variants);
-      } catch (error) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-    }
-
-    if (updatedData.averageReview !== undefined) {
-      try {
-        updatedData.averageReview = convertAndValidateNumber(
-          updatedData.averageReview,
-          'Average review',
-          0
-        );
-        if (updatedData.averageReview > 5) {
-          return res.status(400).json({
-            success: false,
-            message: 'Rating rata-rata tidak boleh lebih dari 5.',
-          });
-        }
-      } catch (error) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-    }
-
-    const updatedProduct = await Product.findByIdAndUpdate(id, updatedData, {
-      new: true,
-      runValidators: true,
-    });
+    if (updateError) throw updateError;
 
     if (!updatedProduct) {
       return res.status(404).json({
@@ -187,19 +124,10 @@ const editProduct = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Produk berhasil diperbarui.',
-      data: updatedProduct,
+      data: { ...updatedProduct, _id: updatedProduct.id },
     });
   } catch (error) {
     console.error('Error saat mengedit produk:', error);
-
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validasi gagal: ' + messages.join(', '),
-      });
-    }
-
     return res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan pada server: ' + error.message,
@@ -209,10 +137,15 @@ const editProduct = async (req, res) => {
 
 const fetchAllProducts = async (req, res) => {
   try {
-    const listOfProducts = await Product.find({}).sort({ createdAt: -1 }); // Sort by newest first
+    const { data: listOfProducts, error: fetchError } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (fetchError) throw fetchError;
     res.status(200).json({
       success: true,
-      data: listOfProducts,
+      data: listOfProducts.map(p => ({ ...p, _id: p.id })),
       count: listOfProducts.length,
     });
   } catch (error) {
@@ -228,7 +161,13 @@ const getProductById = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const product = await Product.findById(id);
+    const { data: product, error: fetchError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
 
     if (!product) {
       return res.status(404).json({
@@ -239,7 +178,7 @@ const getProductById = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: product,
+      data: { ...product, _id: product.id },
     });
   } catch (error) {
     console.error('Error fetching product:', error);
@@ -256,7 +195,14 @@ const deleteProduct = async (req, res) => {
 
     // Validasi ID MongoD
 
-    const product = await Product.findByIdAndDelete(id);
+    const { data: product, error: deleteError } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (deleteError) throw deleteError;
 
     if (!product) {
       return res.status(404).json({

@@ -23,8 +23,8 @@ export const getOrderDetailsForAdmin = createAsyncThunk(
 
 export const updateOrderStatus = createAsyncThunk(
   '/order/updateOrderStatus',
-  async ({ id, orderStatus }) => {
-    const response = await api.put(`/admin/orders/update/${id}`, { orderStatus });
+  async ({ id, orderStatus, trackingNumber }) => {
+    const response = await api.put(`/admin/orders/update/${id}`, { orderStatus, trackingNumber });
     return response.data;
   }
 );

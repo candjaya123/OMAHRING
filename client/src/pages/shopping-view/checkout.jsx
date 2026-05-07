@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, MapPin, User, Phone, AlertCircle, ShoppingCart } from 'lucide-react';
+import { Plus, MapPin, User, Phone, ShoppingCart, Truck, CreditCard } from 'lucide-react';
 import { createNewOrder } from '@/store/shop/order-slice';
 import { fetchAllAddresses } from '@/store/shop/address-slice';
 import img from '../../assets/account.jpg';
@@ -26,58 +26,99 @@ import { formatPrice } from '@/utils/currencyFormatters';
 import useToast from '@/hooks/useToast';
 
 function ShoppingCheckout() {
-  const { cartItems } = useSelector((state) => state.shopCart); // Fixed selector name
+  const { cartItems } = useSelector((state) => state.shopCart);
   const { user } = useSelector((state) => state.auth);
   const { isLoading, orderDetails } = useSelector((state) => state.shopOrder);
-  const { addressList, isLoading: addressLoading } = useSelector((state) => state.shopAddress); // Fixed selector name
+  const { addressList, isLoading: addressLoading } = useSelector((state) => state.shopAddress);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const toast = useToast();
 
-  // State untuk alamat
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [useNewAddress, setUseNewAddress] = useState(true);
+  
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [storeSettings, setStoreSettings] = useState({ storeServiceFee: 0 });
+
   const [newAddressData, setNewAddressData] = useState({
     address: '',
-    city: '',
+    province: '', 
+    city: '', 
     pincode: '',
     phone: '',
     notes: '',
   });
 
-  console.log(newAddressData);
-  console.log(useNewAddress);
-
-  // State untuk guest checkout
   const [guestInfo, setGuestInfo] = useState({
     name: '',
     email: '',
     address: '',
+    province: '',
     city: '',
     pincode: '',
     phone: '',
     notes: '',
   });
+  
   const [errors, setErrors] = useState({});
 
-  // Load addresses untuk user yang login
+  // Shipping cost states
+  const [selectedCourier, setSelectedCourier] = useState('jne');
+  const [shippingOptions, setShippingOptions] = useState([]);
+  const [selectedShipping, setSelectedShipping] = useState(null); 
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+
+  // Payment states
+  const [paymentCategory, setPaymentCategory] = useState('');
+
   useEffect(() => {
     if (user?.id) {
       dispatch(fetchAllAddresses(user.id));
     }
+    fetchProvinces();
+    fetchStoreSettings();
   }, [dispatch, user]);
 
-  // Set default address jika ada
   useEffect(() => {
     if (addressList && addressList.length > 0 && !selectedAddressId) {
       const defaultAddress = addressList.find((addr) => addr.isDefault) || addressList[0];
       setSelectedAddressId(defaultAddress._id);
+      setUseNewAddress(false);
     }
   }, [addressList, selectedAddressId]);
 
-  const handleNewAddressChange = (e) => {
-    const { name, value } = e.target;
-    setNewAddressData((prev) => ({ ...prev, [name]: value }));
+  const fetchStoreSettings = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/settings`);
+      const result = await res.json();
+      if (result.success && result.data) {
+        setStoreSettings({ storeServiceFee: parseInt(result.data.storeServiceFee) || 0 });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const fetchProvinces = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/provinces`);
+      const data = await res.json();
+      if (data.success) setProvinces(data.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchCities = async (provinceId) => {
+    if (!provinceId) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/cities/${provinceId}`);
+      const data = await res.json();
+      if (data.success) setCities(data.data);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleGuestInfoChange = (e) => {
@@ -85,8 +126,87 @@ function ShoppingCheckout() {
     setGuestInfo((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleNewAddressChange = (e) => {
+    const { name, value } = e.target;
+    setNewAddressData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleProvinceChange = (e, isGuest) => {
+    const provId = e.target.value;
+    const selectedProv = provinces.find(p => p.province_id === provId);
+    const provValue = selectedProv ? `${provId}::${selectedProv.province}` : "";
+    
+    if (isGuest) {
+      setGuestInfo(prev => ({ ...prev, province: provValue, city: "" }));
+    } else {
+      setNewAddressData(prev => ({ ...prev, province: provValue, city: "" }));
+    }
+    fetchCities(provId);
+  };
+
+  const handleCityChange = (e, isGuest) => {
+    const cityId = e.target.value;
+    const selectedCity = cities.find(c => c.city_id === cityId);
+    const cityValue = selectedCity ? `${cityId}::${selectedCity.type} ${selectedCity.city_name}` : "";
+    
+    if (isGuest) {
+      setGuestInfo(prev => ({ ...prev, city: cityValue }));
+    } else {
+      setNewAddressData(prev => ({ ...prev, city: cityValue }));
+    }
+  };
+
+  // Automatically recalculate shipping when destination changes
+  useEffect(() => {
+    let destId = null;
+    if (!user) {
+      destId = guestInfo.city?.split('::')[0];
+    } else {
+      if (useNewAddress) {
+        destId = newAddressData.city?.split('::')[0];
+      } else if (selectedAddressId) {
+        const addr = addressList.find(a => a._id === selectedAddressId);
+        if (addr) {
+          destId = addr.city?.split('||')[0]?.split('::')[0];
+        }
+      }
+    }
+
+    if (destId && cartItems?.items?.length > 0 && storeSettings.originCityId) {
+      const totalWeight = cartItems.items.reduce((acc, item) => {
+        return acc + (item.shipping?.weight || 1000) * item.quantity;
+      }, 0);
+
+      fetchShippingCost(destId, totalWeight, selectedCourier);
+    } else {
+      setShippingOptions([]);
+      setSelectedShipping(null);
+    }
+  }, [guestInfo.city, newAddressData.city, selectedAddressId, useNewAddress, selectedCourier, user, cartItems, addressList, storeSettings.originCityId]);
+
+  const fetchShippingCost = async (destinationId, weight, courier) => {
+    setIsCalculatingShipping(true);
+    setShippingOptions([]);
+    setSelectedShipping(null);
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/cost`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination: destinationId, weight, courier })
+      });
+      const data = await res.json();
+      if (data.success && data.data?.costs) {
+        setShippingOptions(data.data.costs);
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setIsCalculatingShipping(false);
+    }
+  };
+
   const validateEmail = (email) => {
-    // Regex sederhana untuk validasi email
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailPattern.test(email);
   };
@@ -95,7 +215,6 @@ function ShoppingCheckout() {
     const newErrors = {};
     const { name, email, address, city, pincode, phone } = guestInfo;
 
-    // Cek setiap field yang wajib diisi
     if (!name) newErrors.name = 'Nama lengkap wajib diisi.';
     if (!email) newErrors.email = 'Email wajib diisi.';
     if (!address) newErrors.address = 'Alamat lengkap wajib diisi.';
@@ -107,10 +226,7 @@ function ShoppingCheckout() {
       newErrors.email = 'Format email tidak valid';
     }
 
-    // Update state errors
     setErrors(newErrors);
-
-    // Jika object newErrors kosong, berarti form valid
     return Object.keys(newErrors).length === 0;
   };
 
@@ -122,11 +238,29 @@ function ShoppingCheckout() {
     return selectedAddressId;
   };
 
+  // Fees Calculations
   const totalCartAmount = cartItems?.cartTotal || 0;
+  const shippingCostValue = selectedShipping?.cost?.[0]?.value || 0;
+  const storeServiceFeeValue = storeSettings.storeServiceFee || 0;
+  
+  const baseTotal = totalCartAmount + shippingCostValue + storeServiceFeeValue;
+  
+  let midtransFeeValue = 0;
+  if (paymentCategory === "bank_transfer") {
+    midtransFeeValue = 4000;
+  } else if (paymentCategory === "minimarket") {
+    midtransFeeValue = 5000;
+  } else if (paymentCategory === "qris") {
+    midtransFeeValue = Math.round(baseTotal * 0.007);
+  } else if (paymentCategory === "ewallet") {
+    midtransFeeValue = Math.round(baseTotal * 0.02);
+  } else if (paymentCategory === "credit_card") {
+    midtransFeeValue = Math.round(baseTotal * 0.029) + 2000;
+  }
+  
+  const grandTotal = baseTotal + midtransFeeValue;
 
   const handleCheckout = () => {
-    console.log('checkout');
-
     if (!cartItems?._id) {
       toast.toastError('Gagal', 'Keranjang tidak ditemukan.');
       return;
@@ -134,7 +268,7 @@ function ShoppingCheckout() {
 
     if (!user) {
       if (!validateGuestInfo()) {
-        toast.toastError('Data Belum Lengkap', 'Harap isi semua field yang diperlukan.');
+        toast.toastError('Data Belum Lengkap', 'Harap isi semua field alamat.');
         return;
       }
     } else {
@@ -144,6 +278,16 @@ function ShoppingCheckout() {
       }
     }
 
+    if (!selectedShipping) {
+      toast.toastError('Layanan Pengiriman', 'Harap pilih layanan kurir terlebih dahulu.');
+      return;
+    }
+    
+    if (!paymentCategory) {
+      toast.toastError('Metode Pembayaran', 'Harap pilih jenis metode pembayaran.');
+      return;
+    }
+
     let addressInfo = {};
     let customerName = '';
     let email = '';
@@ -151,7 +295,7 @@ function ShoppingCheckout() {
     if (!user) {
       addressInfo = {
         address: guestInfo.address,
-        city: guestInfo.city,
+        city: `${guestInfo.city}||${guestInfo.province}`,
         pincode: guestInfo.pincode,
         phone: guestInfo.phone,
         notes: guestInfo.notes,
@@ -160,7 +304,13 @@ function ShoppingCheckout() {
       email = guestInfo.email;
     } else {
       if (useNewAddress) {
-        addressInfo = newAddressData;
+        addressInfo = {
+          address: newAddressData.address,
+          city: `${newAddressData.city}||${newAddressData.province}`,
+          pincode: newAddressData.pincode,
+          phone: newAddressData.phone,
+          notes: newAddressData.notes,
+        };
       } else {
         const selectedAddress = addressList.find((addr) => addr._id === selectedAddressId);
         addressInfo = {
@@ -187,7 +337,9 @@ function ShoppingCheckout() {
         variantName: item.variant.name,
       })),
       addressInfo,
-      totalAmount: totalCartAmount,
+      totalAmount: grandTotal, // expected check in backend
+      shippingCost: shippingCostValue,
+      paymentCategory: paymentCategory,
       customerName,
       email,
     };
@@ -226,7 +378,7 @@ function ShoppingCheckout() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Address Section */}
+        {/* L Kolom Kiri: Alamat, Kurir & Pembayaran */}
         <div className="space-y-6">
           <div className="flex items-center gap-2 mb-4">
             <MapPin className="w-6 h-6 text-orange-500" />
@@ -245,101 +397,59 @@ function ShoppingCheckout() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name">Nama Lengkap *</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      placeholder="Masukkan nama lengkap"
-                      value={guestInfo.name}
-                      onChange={handleGuestInfoChange}
-                      required
-                      className={errors.name ? 'border-red-500' : ''}
-                    />
-                    {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                    <Input id="name" name="name" value={guestInfo.name} onChange={handleGuestInfoChange} required className={errors.name ? 'border-red-500' : ''} />
                   </div>
                   <div>
                     <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="Masukkan email"
-                      value={guestInfo.email}
-                      onChange={handleGuestInfoChange}
-                      required
-                      className={errors.email ? 'border-red-500' : ''}
-                    />
-                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                    <Input id="email" name="email" type="email" value={guestInfo.email} onChange={handleGuestInfoChange} required className={errors.email ? 'border-red-500' : ''} />
                   </div>
                 </div>
 
                 <div>
                   <Label htmlFor="address">Alamat Lengkap *</Label>
-                  <Textarea
-                    id="address"
-                    name="address"
-                    placeholder="Masukkan alamat lengkap"
-                    value={guestInfo.address}
-                    onChange={handleGuestInfoChange}
-                    required
-                    className={errors.address ? 'border-red-500' : ''}
-                  />
-                  {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+                  <Textarea id="address" name="address" value={guestInfo.address} onChange={handleGuestInfoChange} required className={errors.address ? 'border-red-500' : ''} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="city">Kota *</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      placeholder="Masukkan kota"
-                      value={guestInfo.city}
-                      onChange={handleGuestInfoChange}
-                      required
-                      className={errors.city ? 'border-red-500' : ''}
-                    />
-                    {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+                    <Label>Provinsi *</Label>
+                    <select 
+                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                      onChange={(e) => handleProvinceChange(e, true)}
+                      value={guestInfo.province.split('::')[0] || ""}
+                    >
+                      <option value="">Pilih Provinsi</option>
+                      {provinces.map(p => <option key={p.province_id} value={p.province_id}>{p.province}</option>)}
+                    </select>
                   </div>
                   <div>
-                    <Label htmlFor="pincode">Kode Pos *</Label>
-                    <Input
-                      id="pincode"
-                      name="pincode"
-                      placeholder="Masukkan kode pos"
-                      value={guestInfo.pincode}
-                      onChange={handleGuestInfoChange}
-                      required
-                      className={errors.pincode ? 'border-red-500' : ''}
-                    />
-                    {errors.pincode && (
-                      <p className="text-red-500 text-sm mt-1">{errors.pincode}</p>
-                    )}
+                    <Label>Kota / Kabupaten *</Label>
+                    <select 
+                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                      onChange={(e) => handleCityChange(e, true)}
+                      value={guestInfo.city.split('::')[0] || ""}
+                      disabled={!guestInfo.province}
+                    >
+                      <option value="">Pilih Kota</option>
+                      {cities.map(c => <option key={c.city_id} value={c.city_id}>{c.type} {c.city_name}</option>)}
+                    </select>
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="phone">Nomor Telepon *</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    placeholder="Masukkan nomor telepon"
-                    value={guestInfo.phone}
-                    onChange={handleGuestInfoChange}
-                    required
-                    className={errors.phone ? 'border-red-500' : ''}
-                  />
-                  {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Nomor Telepon *</Label>
+                    <Input id="phone" name="phone" value={guestInfo.phone} onChange={handleGuestInfoChange} required className={errors.phone ? 'border-red-500' : ''} />
+                  </div>
+                  <div>
+                    <Label htmlFor="pincode">Kode Pos *</Label>
+                    <Input id="pincode" name="pincode" value={guestInfo.pincode} onChange={handleGuestInfoChange} required className={errors.pincode ? 'border-red-500' : ''} />
+                  </div>
                 </div>
 
                 <div>
                   <Label htmlFor="notes">Catatan (Opsional)</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    placeholder="Catatan tambahan untuk pengiriman"
-                    value={guestInfo.notes}
-                    onChange={handleGuestInfoChange}
-                  />
+                  <Textarea id="notes" name="notes" value={guestInfo.notes} onChange={handleGuestInfoChange} />
                 </div>
               </CardContent>
             </Card>
@@ -350,7 +460,6 @@ function ShoppingCheckout() {
                 <div>Loading addresses...</div>
               ) : (
                 <>
-                  {/* Existing Addresses */}
                   {addressList && addressList.length > 0 && (
                     <Card>
                       <CardContent className="p-6">
@@ -368,42 +477,30 @@ function ShoppingCheckout() {
                           }}
                           className="space-y-3"
                         >
-                          {addressList.map((address) => (
-                            <div
-                              key={address._id}
-                              className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50"
-                            >
-                              <RadioGroupItem
-                                value={address._id}
-                                id={address._id}
-                                className="mt-1"
-                              />
-                              <Label htmlFor={address._id} className="flex-1 cursor-pointer">
-                                <div className="font-medium">{address.address}</div>
-                                <div className="text-sm text-gray-600">
-                                  {address.city}, {address.pincode}
-                                </div>
-                                <div className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                                  <Phone className="w-3 h-3" />
-                                  {address.phone}
-                                </div>
-                                {address.notes && (
-                                  <div className="text-sm text-gray-500 mt-1">
-                                    Note: {address.notes}
-                                  </div>
-                                )}
-                              </Label>
-                            </div>
-                          ))}
+                          {addressList.map((address) => {
+                            const parsed = address.city?.split('||') || [""];
+                            const cityLabel = parsed[0]?.split('::')[1] || address.city;
+                            const provLabel = parsed[1]?.split('::')[1] || "";
+                            const displayCity = `${cityLabel}${provLabel ? `, ${provLabel}` : ''}`;
 
-                          {/* New Address Option */}
+                            return (
+                              <div key={address._id} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                                <RadioGroupItem value={address._id} id={address._id} className="mt-1" />
+                                <Label htmlFor={address._id} className="flex-1 cursor-pointer">
+                                  <div className="font-medium">{address.address}</div>
+                                  <div className="text-sm text-gray-600">{displayCity}, {address.pincode}</div>
+                                  <div className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                    <Phone className="w-3 h-3" />{address.phone}
+                                  </div>
+                                </Label>
+                              </div>
+                            );
+                          })}
+
                           <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
                             <RadioGroupItem value="new" id="new" className="mt-1" />
-                            <Label htmlFor="new" className="flex-1 cursor-pointer">
-                              <div className="flex items-center gap-2 font-medium">
-                                <Plus className="w-4 h-4" />
-                                Gunakan alamat baru
-                              </div>
+                            <Label htmlFor="new" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
+                              <Plus className="w-4 h-4" /> Gunakan alamat baru
                             </Label>
                           </div>
                         </RadioGroup>
@@ -415,94 +512,198 @@ function ShoppingCheckout() {
                   {(useNewAddress || !addressList || addressList.length === 0) && (
                     <Card>
                       <CardContent className="p-6 space-y-4">
-                        <h3 className="text-lg font-semibold">
-                          {addressList && addressList.length > 0 ? 'Alamat Baru' : 'Tambah Alamat'}
-                        </h3>
-
+                        <h3 className="text-lg font-semibold">Alamat Baru</h3>
                         <div>
-                          <Label htmlFor="newAddress">Alamat Lengkap *</Label>
-                          <Textarea
-                            id="newAddress"
-                            name="address"
-                            placeholder="Masukkan alamat lengkap"
-                            value={newAddressData.address}
-                            onChange={handleNewAddressChange}
-                            required
-                            className={errors.name ? 'border-red-500' : ''}
-                          />
+                          <Label>Alamat Lengkap *</Label>
+                          <Textarea name="address" value={newAddressData.address} onChange={handleNewAddressChange} required />
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="newCity">Kota *</Label>
-                            <Input
-                              id="newCity"
-                              name="city"
-                              placeholder="Masukkan kota"
-                              value={newAddressData.city}
-                              onChange={handleNewAddressChange}
-                              required
-                              className={errors.name ? 'border-red-500' : ''}
-                            />
+                            <Label>Provinsi *</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                              onChange={(e) => handleProvinceChange(e, false)}
+                              value={newAddressData.province.split('::')[0] || ""}
+                            >
+                              <option value="">Pilih Provinsi</option>
+                              {provinces.map(p => <option key={p.province_id} value={p.province_id}>{p.province}</option>)}
+                            </select>
                           </div>
                           <div>
-                            <Label htmlFor="newPincode">Kode Pos *</Label>
-                            <Input
-                              id="newPincode"
-                              name="pincode"
-                              placeholder="Masukkan kode pos"
-                              value={newAddressData.pincode}
-                              onChange={handleNewAddressChange}
-                              required
-                              className={errors.name ? 'border-red-500' : ''}
-                            />
+                            <Label>Kota / Kabupaten *</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                              onChange={(e) => handleCityChange(e, false)}
+                              value={newAddressData.city.split('::')[0] || ""}
+                              disabled={!newAddressData.province}
+                            >
+                              <option value="">Pilih Kota</option>
+                              {cities.map(c => <option key={c.city_id} value={c.city_id}>{c.type} {c.city_name}</option>)}
+                            </select>
                           </div>
                         </div>
-
-                        <div>
-                          <Label htmlFor="newPhone">Nomor Telepon *</Label>
-                          <Input
-                            id="newPhone"
-                            name="phone"
-                            placeholder="Masukkan nomor telepon"
-                            value={newAddressData.phone}
-                            onChange={handleNewAddressChange}
-                            required
-                            className={errors.name ? 'border-red-500' : ''}
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="newNotes">Catatan (Opsional)</Label>
-                          <Textarea
-                            id="newNotes"
-                            name="notes"
-                            placeholder="Catatan tambahan untuk pengiriman"
-                            value={newAddressData.notes}
-                            onChange={handleNewAddressChange}
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Nomor Telepon *</Label>
+                            <Input name="phone" value={newAddressData.phone} onChange={handleNewAddressChange} required />
+                          </div>
+                          <div>
+                            <Label>Kode Pos *</Label>
+                            <Input name="pincode" value={newAddressData.pincode} onChange={handleNewAddressChange} required />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
                   )}
-
-                  {/* Quick Link to Address Management */}
-                  <div className="text-center">
-                    <Button
-                      variant="link"
-                      onClick={() => navigate('/shop/account')}
-                      className="text-orange-500 hover:text-orange-600"
-                    >
-                      Kelola Alamat di Pengaturan Akun
-                    </Button>
-                  </div>
                 </>
               )}
             </div>
           )}
+
+          {/* Pengiriman (Kurir) Section */}
+          <div className="pt-2">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Truck className="w-6 h-6 text-orange-500" />
+                  <h2 className="text-xl font-bold">Metode Pengiriman</h2>
+                </div>
+                
+                <div className="mb-4">
+                  <Label>Pilih Kurir Ekspedisi</Label>
+                  <RadioGroup 
+                    value={selectedCourier} 
+                    onValueChange={(val) => { setSelectedCourier(val); setSelectedShipping(null); }}
+                    className="flex gap-4 mt-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="jne" id="jne" />
+                      <Label htmlFor="jne" className="uppercase font-semibold">JNE</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="pos" id="pos" />
+                      <Label htmlFor="pos" className="uppercase font-semibold">POS</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="tiki" id="tiki" />
+                      <Label htmlFor="tiki" className="uppercase font-semibold">TIKI</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {isCalculatingShipping ? (
+                  <p className="text-sm text-gray-500 italic">Menghitung ongkos kirim...</p>
+                ) : shippingOptions.length > 0 ? (
+                  <div className="space-y-3">
+                    <Label>Pilih Layanan</Label>
+                    <RadioGroup 
+                      value={selectedShipping?.service || ""}
+                      onValueChange={(service) => {
+                        const opt = shippingOptions.find(o => o.service === service);
+                        if(opt) setSelectedShipping(opt);
+                      }}
+                      className="space-y-2"
+                    >
+                      {shippingOptions.map((opt) => (
+                        <div key={opt.service} className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${selectedShipping?.service === opt.service ? 'border-orange-500 bg-orange-50' : ''}`}>
+                          <div className="flex items-center space-x-3">
+                            <RadioGroupItem value={opt.service} id={opt.service} />
+                            <Label htmlFor={opt.service} className="flex flex-col cursor-pointer">
+                              <span className="font-semibold text-gray-800">{opt.service} ({opt.description})</span>
+                              <span className="text-xs text-gray-500">Estimasi tiba: {opt.cost[0]?.etd} hari</span>
+                            </Label>
+                          </div>
+                          <div className="font-bold text-gray-900">
+                            {formatPrice(opt.cost[0]?.value)}
+                          </div>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    Silakan isi alamat tujuan dengan lengkap untuk melihat pilihan ongkos kirim.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Metode Pembayaran Section */}
+          <div className="pt-2">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard className="w-6 h-6 text-orange-500" />
+                  <h2 className="text-xl font-bold">Pilih Metode Pembayaran</h2>
+                </div>
+                
+                <RadioGroup 
+                  value={paymentCategory} 
+                  onValueChange={setPaymentCategory}
+                  className="space-y-3 mt-4"
+                >
+                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'bank_transfer' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem value="bank_transfer" id="bank_transfer" />
+                      <Label htmlFor="bank_transfer" className="flex flex-col cursor-pointer">
+                        <span className="font-semibold text-gray-800">Transfer Bank (Virtual Account)</span>
+                        <span className="text-xs text-gray-500">BCA, BNI, BRI, Mandiri, dll.</span>
+                      </Label>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ Rp 4.000</div>
+                  </div>
+
+                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'qris' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem value="qris" id="qris" />
+                      <Label htmlFor="qris" className="flex flex-col cursor-pointer">
+                        <span className="font-semibold text-gray-800">QRIS</span>
+                        <span className="text-xs text-gray-500">Scan QR Code dengan aplikasi apapun</span>
+                      </Label>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 0.7%</div>
+                  </div>
+
+                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'ewallet' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem value="ewallet" id="ewallet" />
+                      <Label htmlFor="ewallet" className="flex flex-col cursor-pointer">
+                        <span className="font-semibold text-gray-800">E-Wallet</span>
+                        <span className="text-xs text-gray-500">GoPay, ShopeePay</span>
+                      </Label>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 2%</div>
+                  </div>
+
+                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'minimarket' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem value="minimarket" id="minimarket" />
+                      <Label htmlFor="minimarket" className="flex flex-col cursor-pointer">
+                        <span className="font-semibold text-gray-800">Gerai Minimarket</span>
+                        <span className="text-xs text-gray-500">Indomaret, Alfamart</span>
+                      </Label>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ Rp 5.000</div>
+                  </div>
+
+                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'credit_card' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem value="credit_card" id="credit_card" />
+                      <Label htmlFor="credit_card" className="flex flex-col cursor-pointer">
+                        <span className="font-semibold text-gray-800">Kartu Kredit / Debit</span>
+                        <span className="text-xs text-gray-500">Visa, MasterCard, JCB</span>
+                      </Label>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 2.9% + Rp 2.000</div>
+                  </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* Order Summary */}
+        {/* R Kolom Kanan: Order Summary */}
         <div>
           <Card className="sticky top-4">
             <CardContent className="p-6">
@@ -510,49 +711,53 @@ function ShoppingCheckout() {
 
               <div className="space-y-3 mb-4">
                 {cartItems?.items?.map((item) => (
-                  <div
-                    key={`${item.productId}-${item.variant.name}`}
-                    className="flex justify-between text-sm py-2 border-b"
-                  >
+                  <div key={`${item.productId}-${item.variant.name}`} className="flex justify-between text-sm py-2 border-b">
                     <div className="flex-1">
                       <div className="font-medium">{item.title}</div>
-                      <div className="text-gray-600">
-                        {item.variant.name} x {item.quantity}
-                      </div>
+                      <div className="text-gray-600">{item.variant.name} x {item.quantity}</div>
                     </div>
                     <div className="text-right">
                       <div className="font-medium">
-                        Rp{' '}
-                        {(
-                          (item.variant.salePrice > 0
-                            ? item.variant.salePrice
-                            : item.variant.price) * item.quantity
-                        ).toLocaleString('id-ID')}
+                        {(item.variant.salePrice > 0 ? item.variant.salePrice : item.variant.price) * item.quantity}
                       </div>
-                      {item.variant.salePrice > 0 && (
-                        <div className="text-xs text-gray-500 line-through">
-                          Rp {(item.variant.price * item.quantity).toLocaleString('id-ID')}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <Separator className="my-4" />
+              <div className="space-y-2 py-2 border-b text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal Produk</span>
+                  <span className="font-medium">{formatPrice(totalCartAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Ongkos Kirim {selectedCourier ? `(${selectedCourier.toUpperCase()})` : ""}</span>
+                  <span className="font-medium">{shippingCostValue > 0 ? formatPrice(shippingCostValue) : "Rp 0"}</span>
+                </div>
+                {storeServiceFeeValue > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Biaya Layanan Toko</span>
+                    <span className="font-medium">{formatPrice(storeServiceFeeValue)}</span>
+                  </div>
+                )}
+                {midtransFeeValue > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Biaya Adm Pembayaran</span>
+                    <span className="font-medium">{formatPrice(midtransFeeValue)}</span>
+                  </div>
+                )}
+              </div>
 
-              <div className="flex justify-between font-bold text-xl mb-6">
+              <div className="flex justify-between font-bold text-xl my-4">
                 <span>Total Pembayaran</span>
-                <span className="text-orange-600">
-                  Rp {totalCartAmount.toLocaleString('id-ID')}
-                </span>
+                <span className="text-orange-600">{formatPrice(grandTotal)}</span>
               </div>
 
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-lg py-6 rounded-lg shadow-md hover:shadow-lg transition-all"
-                    disabled={isLoading}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-lg py-6 rounded-lg shadow-md transition-all"
+                    disabled={isLoading || !selectedShipping || !paymentCategory}
                   >
                     {isLoading ? 'Memproses...' : 'Bayar Sekarang'}
                   </Button>
@@ -565,60 +770,24 @@ function ShoppingCheckout() {
                       Konfirmasi Pesanan Anda
                     </DialogTitle>
                     <DialogDescription className="pt-1 text-gray-500">
-                      Harap periksa kembali detail pesanan Anda sebelum melanjutkan ke pembayaran.
+                      Harap periksa kembali detail pesanan Anda sebelum melanjutkan ke pembayaran. Midtrans akan memproses transaksi Anda dengan gerbang pembayaran yang dipilih.
                     </DialogDescription>
                   </DialogHeader>
 
                   <div className="px-6 space-y-4">
-                    {/* Ringkasan Pesanan */}
-                    <div className="max-h-[250px] overflow-y-auto space-y-3 pr-2 -mr-2">
-                      {cartItems?.items?.map((item) => (
-                        <div
-                          key={`${item.productId}-${item.variant.name}`}
-                          className="flex justify-between items-start text-sm py-3 px-3 rounded-lg border bg-gray-50 hover:bg-gray-100 transition"
-                        >
-                          <div className="flex-1 mr-4">
-                            <p className="font-medium text-gray-800">{item.title}</p>
-                            <p className="text-gray-500 text-xs">
-                              {item.variant.name} (x{item.quantity})
-                            </p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="font-semibold text-gray-900">
-                              {formatPrice(
-                                (item.variant.salePrice > 0
-                                  ? item.variant.salePrice
-                                  : item.variant.price) * item.quantity
-                              )}
-                            </p>
-                            {item.variant.salePrice > 0 && (
-                              <p className="text-xs text-gray-400 line-through">
-                                {formatPrice(item.variant.price * item.quantity)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <Separator />
-
-                    {/* Total */}
                     <div className="flex justify-between items-center font-semibold text-lg">
                       <span>Total Pembayaran</span>
-                      <span className="text-orange-600">{formatPrice(totalCartAmount)}</span>
+                      <span className="text-orange-600">{formatPrice(grandTotal)}</span>
                     </div>
                   </div>
 
                   <DialogFooter className="bg-gray-50 px-6 py-4 rounded-b-xl flex flex-col sm:flex-row sm:justify-end gap-3">
                     <DialogClose asChild>
-                      <Button variant="outline" className="w-full sm:w-auto">
-                        Batal
-                      </Button>
+                      <Button variant="outline" className="w-full sm:w-auto">Batal</Button>
                     </DialogClose>
                     <Button
                       onClick={handleCheckout}
-                      className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white shadow-md"
+                      className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white"
                       disabled={isLoading}
                     >
                       {isLoading ? 'Memproses...' : 'Lanjutkan Pembayaran'}
@@ -626,10 +795,6 @@ function ShoppingCheckout() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-
-              <div className="text-center text-xs text-gray-500 mt-3">
-                Dengan melanjutkan, Anda menyetujui syarat dan ketentuan
-              </div>
             </CardContent>
           </Card>
         </div>

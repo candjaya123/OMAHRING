@@ -31,8 +31,8 @@ function AdminOrdersView() {
     setSelectedOrder(null);
   };
 
-  const handleUpdateStatus = (orderId, newStatus) => {
-    dispatch(updateOrderStatus({ id: orderId, orderStatus: newStatus }))
+  const handleUpdateStatus = (orderId, newStatus, trackingNumber) => {
+    dispatch(updateOrderStatus({ id: orderId, orderStatus: newStatus, trackingNumber }))
       .unwrap()
       .then(() => {
         toast.toastSuccess('Berhasil', 'Status pesanan berhasil diperbarui.');

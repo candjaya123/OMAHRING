@@ -6,6 +6,7 @@ import {
   TicketPercent,
   FileText, // 🔹 Impor ikon baru
   UserCog, // 🔹 Impor ikon baru
+  Settings,
 } from 'lucide-react';
 import { Fragment } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -39,6 +40,13 @@ const adminSidebarMenuItems = [
     roles: ['admin', 'manager'],
   },
   {
+    id: 'articles',
+    label: 'Artikel',
+    path: '/admin/articles',
+    icon: <FileText size={20} />,
+    roles: ['admin', 'manager'],
+  },
+  {
     id: 'customers',
     label: 'Pelanggan',
     path: '/admin/customers',
@@ -50,6 +58,13 @@ const adminSidebarMenuItems = [
     label: 'Promo',
     path: '/admin/promos',
     icon: <TicketPercent size={20} />,
+    roles: ['admin', 'manager'],
+  },
+  {
+    id: 'settings',
+    label: 'Pengaturan',
+    path: '/admin/settings',
+    icon: <Settings size={20} />,
     roles: ['admin', 'manager'],
   },
   // 🔹 MENU BARU KHUSUS MANAGER 🔹

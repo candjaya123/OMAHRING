@@ -20,6 +20,29 @@ export const registerFormControls = [
     componentType: 'input',
     type: 'password',
   },
+  {
+    name: 'role',
+    label: 'Register As',
+    componentType: 'select',
+    options: [
+      { id: 'user', label: 'Customer' },
+      { id: 'member', label: 'Member / Breeder' },
+    ],
+  },
+  {
+    name: 'nik',
+    label: 'NIK (Identity Number)',
+    placeholder: 'Enter your NIK (Required for Member)',
+    componentType: 'input',
+    type: 'text',
+  },
+  {
+    name: 'phone_number',
+    label: 'Phone Number',
+    placeholder: 'Enter your phone number',
+    componentType: 'input',
+    type: 'text',
+  },
 ];
 
 export const loginFormControls = [
@@ -160,6 +183,40 @@ export const brandOptionsMap = {
   zara: 'Zara',
   'h&m': 'H&M',
 };
+
+export const nestedCategories = [
+  {
+    id: 'hewan-peliharaan',
+    label: 'Hewan Peliharaan',
+    children: [
+      {
+        id: 'makanan-hewan',
+        label: 'Makanan Hewan',
+        children: [
+          { id: 'kucing', label: 'Kucing' },
+          { id: 'anjing', label: 'Anjing' },
+          { id: 'burung', label: 'Burung' },
+        ],
+      },
+      {
+        id: 'aksesoris-hewan',
+        label: 'Aksesoris Hewan',
+        children: [
+          { id: 'kandang', label: 'Kandang' },
+          { id: 'mainan', label: 'Mainan' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ring-aksesoris',
+    label: 'Ring & Aksesoris',
+    children: [
+      { id: 'ring-burung', label: 'Ring Burung' },
+      { id: 'perlengkapan-lomba', label: 'Perlengkapan Lomba' },
+    ],
+  },
+];
 
 export const filterOptions = {
   category: [

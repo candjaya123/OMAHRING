@@ -1,7 +1,5 @@
-const Cart = require('../../models/Cart');
-const Product = require('../../models/Product');
+const supabase = require('../../config/supabase');
 const { v4: uuidv4 } = require('uuid');
-const mongoose = require('mongoose');
 
 const calculateCartTotal = (items) => {
   return items.reduce((total, item) => {
@@ -11,8 +9,9 @@ const calculateCartTotal = (items) => {
   }, 0);
 };
 
-const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
+const isValidUUID = (id) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
 };
 
 const addToCart = async (req, res) => {
@@ -33,15 +32,22 @@ const addToCart = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(productId);
-    if (!product) {
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', productId)
+      .maybeSingle();
+
+    if (productError || !product) {
       return res.status(404).json({
         success: false,
         message: 'Produk tidak ditemukan.',
       });
     }
 
-    const productVariant = product.variants.find((v) => v.name === variant.name);
+    const productVariant = (product.variants || []).find(
+      (v) => v.name === variant.name || (v.combination && v.combination.join(' - ') === variant.name)
+    );
     if (!productVariant) {
       return res.status(400).json({
         success: false,
@@ -57,37 +63,46 @@ const addToCart = async (req, res) => {
     }
 
     let cart;
-    if (userId) {
-      cart = await Cart.findOne({ userId });
-    } else if (sessionId) {
-      cart = await Cart.findOne({ sessionId });
-    }
+    const cartQuery = userId ? supabase.from('carts').select('*').eq('user_id', userId) : supabase.from('carts').select('*').eq('sessionId', sessionId);
+    const { data: existingCart, error: cartError } = await cartQuery.maybeSingle();
+
+    if (cartError) throw cartError;
+    cart = existingCart;
 
     if (!cart) {
       if (!userId && !sessionId) {
         sessionId = `guest_${uuidv4()}`;
       }
 
-      cart = new Cart({
-        userId: userId || null,
-        sessionId: sessionId || null,
-        items: [],
-      });
+      const { data: newCart, error: createError } = await supabase
+        .from('carts')
+        .insert({
+          user_id: userId || null,
+          sessionId: sessionId || null,
+          items: [],
+          carttotal: 0
+        })
+        .select()
+        .single();
+      
+      if (createError) throw createError;
+      cart = newCart;
     }
 
     const cartVariant = {
-      name: productVariant.name,
+      name: variant.name, // Use the name from request to ensure consistency
       price: productVariant.price,
       salePrice: productVariant.salePrice || 0,
       totalStock: productVariant.totalStock,
     };
 
-    const existingItemIndex = cart.items.findIndex(
-      (item) => item.productId.toString() === productId && item.variant.name === variant.name
+    const updatedItems = [...(cart.items || [])];
+    const existingItemIndex = updatedItems.findIndex(
+      (item) => item.productId === productId && item.variant.name === variant.name
     );
 
     if (existingItemIndex > -1) {
-      const existingItem = cart.items[existingItemIndex];
+      const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
 
       if (productVariant.totalStock < newQuantity) {
@@ -100,27 +115,37 @@ const addToCart = async (req, res) => {
       existingItem.quantity = newQuantity;
       existingItem.variant = cartVariant;
     } else {
-      cart.items.push({
+      updatedItems.push({
         productId,
         quantity,
         variant: cartVariant,
       });
     }
 
-    cart.cartTotal = calculateCartTotal(cart.items);
-    await cart.save();
+    const cartTotal = calculateCartTotal(updatedItems);
+    const { data: savedCart, error: updateError } = await supabase
+      .from('carts')
+      .update({ items: updatedItems, carttotal: cartTotal })
+      .eq('id', cart.id)
+      .select()
+      .single();
 
-    await cart.populate({
-      path: 'items.productId',
-      select: 'image title description category brand',
-    });
+    if (updateError) throw updateError;
+
+    // Manual population for response
+    const populatedItems = await Promise.all(savedCart.items.map(async (item) => {
+        const { data: p } = await supabase.from('products').select('media, title, description, category, attributes, shipping').eq('id', item.productId).maybeSingle();
+        return { ...item, productId: p ? { ...p, _id: item.productId } : { title: 'Product Removed', _id: item.productId } };
+    }));
 
     res.status(200).json({
       success: true,
       message: 'Item berhasil ditambahkan ke keranjang!',
       data: {
-        ...cart.toObject(),
-        sessionId: cart.sessionId || null,
+        ...savedCart,
+        _id: savedCart.id,
+        items: populatedItems,
+        sessionId: savedCart.sessionId || null,
       },
     });
   } catch (error) {
@@ -143,11 +168,10 @@ const fetchCartItems = async (req, res) => {
       });
     }
 
-    const query = isValidObjectId(id) ? { userId: id } : { sessionId: id };
-    const cart = await Cart.findOne(query).populate({
-      path: 'items.productId',
-      select: 'image title description category brand variants',
-    });
+    const cartQuery = isValidUUID(id) ? supabase.from('carts').select('*').eq('user_id', id) : supabase.from('carts').select('*').eq('sessionId', id);
+    const { data: cart, error: cartError } = await cartQuery.maybeSingle();
+
+    if (cartError) throw cartError;
 
     if (!cart) {
       return res.status(200).json({
@@ -156,29 +180,36 @@ const fetchCartItems = async (req, res) => {
       });
     }
 
-    const validItems = cart.items.filter((item) => item.productId);
+    // Manual population
+    const populatedItems = await Promise.all(cart.items.map(async (item) => {
+        const { data: p } = await supabase.from('products').select('media, title, description, category, attributes, variants, shipping').eq('id', item.productId).maybeSingle();
+        return { ...item, productId: p ? { ...p, _id: item.productId } : null };
+    }));
+
+    const validItems = populatedItems.filter((item) => item.productId);
 
     if (validItems.length < cart.items.length) {
-      cart.items = validItems;
-      cart.cartTotal = calculateCartTotal(cart.items);
-      await cart.save();
+      const filteredItems = validItems.map(vi => ({ productId: vi.productId._id, quantity: vi.quantity, variant: vi.variant }));
+      const cartTotal = calculateCartTotal(filteredItems);
+      await supabase.from('carts').update({ items: filteredItems, carttotal: cartTotal }).eq('id', cart.id);
     }
 
-    const populateCartItems = validItems.map((item) => ({
-      productId: item.productId._id,
-      image: item.productId.image,
-      title: item.productId.title,
-      category: item.productId.category,
+    const responseItems = validItems.map((item) => ({
+      productId: item.productId?._id,
+      image: item.productId?.media?.images?.[0] || '',
+      title: item.productId?.title,
+      category: item.productId?.category,
       quantity: item.quantity,
       variant: item.variant,
+      shipping: item.productId?.shipping, // 🔹 Sertakan data shipping (originCityId)
     }));
 
     res.status(200).json({
       success: true,
       data: {
-        items: populateCartItems,
-        cartTotal: cart.cartTotal,
-        _id: cart._id,
+        items: responseItems,
+        cartTotal: cart.carttotal || 0,
+        _id: cart.id,
       },
     });
   } catch (error) {
@@ -202,7 +233,7 @@ const updateCartItemQty = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(productId);
+    const { data: product, error: pError } = await supabase.from('products').select('*').eq('id', productId).maybeSingle();
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -218,8 +249,8 @@ const updateCartItemQty = async (req, res) => {
       });
     }
 
-    const query = userId ? { userId } : { sessionId };
-    const cart = await Cart.findOne(query);
+    const cartQuery = userId ? supabase.from('carts').select('*').eq('user_id', userId) : supabase.from('carts').select('*').eq('sessionId', sessionId);
+    const { data: cart, error: cError } = await cartQuery.maybeSingle();
 
     if (!cart) {
       return res.status(404).json({
@@ -228,9 +259,9 @@ const updateCartItemQty = async (req, res) => {
       });
     }
 
-    // Update item
-    const itemIndex = cart.items.findIndex(
-      (item) => item.productId.toString() === productId && item.variant?.name === variantName
+    const updatedItems = [...cart.items];
+    const itemIndex = updatedItems.findIndex(
+      (item) => item.productId === productId && item.variant?.name === variantName
     );
 
     if (itemIndex === -1) {
@@ -240,7 +271,7 @@ const updateCartItemQty = async (req, res) => {
       });
     }
 
-    const currentQuantity = cart.items[itemIndex].quantity;
+    const currentQuantity = updatedItems[itemIndex].quantity;
     if (quantity > currentQuantity) {
       if (quantity > productVariant.totalStock) {
         return res.status(400).json({
@@ -249,32 +280,38 @@ const updateCartItemQty = async (req, res) => {
         });
       }
     }
-    cart.items[itemIndex].quantity = quantity;
+    updatedItems[itemIndex].quantity = quantity;
 
-    cart.cartTotal = calculateCartTotal(cart.items);
-    await cart.save();
+    const cartTotal = calculateCartTotal(updatedItems);
+    const { data: savedCart, error: uError } = await supabase
+      .from('carts')
+      .update({ items: updatedItems, carttotal: cartTotal })
+      .eq('id', cart.id)
+      .select()
+      .single();
 
-    // Populate dan return
-    await cart.populate({
-      path: 'items.productId',
-      select: 'image title description category brand',
-    });
+    if (uError) throw uError;
 
-    const populateCartItems = cart.items.map((item) => ({
-      productId: item.productId._id,
-      image: item.productId.image,
-      title: item.productId.title,
-      category: item.productId.category,
-      quantity: item.quantity,
-      variant: item.variant,
+    // Populate
+    const responseItems = await Promise.all(savedCart.items.map(async (item) => {
+        const { data: p } = await supabase.from('products').select('media, title, description, category, attributes').eq('id', item.productId).maybeSingle();
+        return {
+          productId: item.productId,
+          image: p?.media?.images?.[0] || '',
+          title: p?.title || 'Unknown Product',
+          category: p?.category || [],
+          quantity: item.quantity,
+          variant: item.variant,
+          shipping: p?.shipping, // 🔹 Sertakan shipping
+        };
     }));
 
     res.status(200).json({
       success: true,
       data: {
-        items: populateCartItems,
-        cartTotal: cart.cartTotal,
-        _id: cart._id,
+        items: responseItems,
+        cartTotal: savedCart.carttotal || 0,
+        _id: savedCart.id,
       },
     });
   } catch (error) {
@@ -297,8 +334,8 @@ const deleteCartItem = async (req, res) => {
       });
     }
 
-    const query = isValidObjectId(id) ? { userId: id } : { sessionId: id };
-    const cart = await Cart.findOne(query);
+    const cartQuery = isValidUUID(id) ? supabase.from('carts').select('*').eq('user_id', id) : supabase.from('carts').select('*').eq('sessionId', id);
+    const { data: cart, error: cError } = await cartQuery.maybeSingle();
 
     if (!cart) {
       return res.status(404).json({
@@ -307,35 +344,39 @@ const deleteCartItem = async (req, res) => {
       });
     }
 
-    // Hapus item
-    cart.items = cart.items.filter(
-      (item) => !(item.productId.toString() === productId && item.variant?.name === variantName)
+    const updatedItems = cart.items.filter(
+      (item) => !(item.productId === productId && item.variant?.name === variantName)
     );
 
-    cart.cartTotal = calculateCartTotal(cart.items);
-    await cart.save();
+    const cartTotal = calculateCartTotal(updatedItems);
+    const { data: savedCart, error: suError } = await supabase
+      .from('carts')
+      .update({ items: updatedItems, carttotal: cartTotal })
+      .eq('id', cart.id)
+      .select()
+      .single();
 
-    // Populate dan return
-    await cart.populate({
-      path: 'items.productId',
-      select: 'image title description category brand',
-    });
+    if (suError) throw suError;
 
-    const populateCartItems = cart.items.map((item) => ({
-      productId: item.productId._id,
-      image: item.productId.image,
-      title: item.productId.title,
-      category: item.productId.category,
-      quantity: item.quantity,
-      variant: item.variant,
+    // Populate
+    const responseItems = await Promise.all(savedCart.items.map(async (item) => {
+        const { data: p } = await supabase.from('products').select('media, title, description, category, attributes').eq('id', item.productId).maybeSingle();
+        return {
+          productId: item.productId,
+          image: p?.media?.images?.[0] || '',
+          title: p?.title || 'Unknown Product',
+          category: p?.category || [],
+          quantity: item.quantity,
+          variant: item.variant,
+        };
     }));
 
     res.status(200).json({
       success: true,
       data: {
-        items: populateCartItems,
-        cartTotal: cart.cartTotal,
-        _id: cart._id,
+        items: responseItems,
+        cartTotal: savedCart.carttotal || 0,
+        _id: savedCart.id,
       },
     });
   } catch (error) {
@@ -351,48 +392,44 @@ const mergeCart = async (req, res) => {
   const { userId, sessionId, action } = req.body;
 
   try {
-    const guestCart = await Cart.findOne({ sessionId });
-    const userCart = await Cart.findOne({ userId });
+    const { data: guestCart } = await supabase.from('carts').select('*').eq('sessionId', sessionId).maybeSingle();
+    const { data: userCart } = await supabase.from('carts').select('*').eq('user_id', userId).maybeSingle();
 
     if (!guestCart) {
       return res.status(404).json({ message: 'Guest cart tidak ditemukan.' });
     }
 
     if (!userCart) {
-      guestCart.userId = userId;
-      guestCart.sessionId = null;
-      await guestCart.save();
-      return res.json({ message: 'Cart berhasil dipindahkan ke akun user.', cart: guestCart });
+      const { data: updatedCart, error } = await supabase
+        .from('carts')
+        .update({ user_id: userId, sessionId: null })
+        .eq('id', guestCart.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return res.json({ message: 'Cart berhasil dipindahkan ke akun user.', cart: { ...updatedCart, _id: updatedCart.id } });
     }
 
     if (action === 'replace') {
-      await Cart.deleteOne({ sessionId });
-      return res.json({ message: 'Guest cart dibuang, tetap pakai cart user.', cart: userCart });
+      await supabase.from('carts').delete().eq('id', guestCart.id);
+      return res.json({ message: 'Guest cart dibuang, tetap pakai cart user.', cart: { ...userCart, _id: userCart.id } });
     }
 
-    const mergedItems = [...userCart.items];
+    const mergedItems = [...(userCart.items || [])];
 
-    for (const guestItem of guestCart.items) {
+    for (const guestItem of (guestCart.items || [])) {
       const existingIndex = mergedItems.findIndex(
         (item) =>
-          item.productId.toString() === guestItem.productId.toString() &&
+          item.productId === guestItem.productId &&
           item.variant.name === guestItem.variant.name
       );
 
       if (existingIndex > -1) {
-        const totalQuantity = mergedItems[existingIndex].quantity + guestItem.quantity;
-
-        const product = await Product.findById(guestItem.productId);
-        const stock =
-          product.variants.find((v) => v.name === guestItem.variant.name)?.totalStock || 0;
-
-        // mergedItems[existingIndex].quantity = Math.min(totalQuantity, stock);
-        // tambahkan semua meskipun lebih dari stok
-        mergedItems[existingIndex].quantity = totalQuantity;
+        mergedItems[existingIndex].quantity += guestItem.quantity;
       } else {
-        const product = await Product.findById(guestItem.productId);
-        const stock =
-          product.variants.find((v) => v.name === guestItem.variant.name)?.totalStock || 0;
+        const { data: product } = await supabase.from('products').select('variants').eq('id', guestItem.productId).maybeSingle();
+        const stock = product?.variants?.find((v) => v.name === guestItem.variant.name)?.totalStock || 0;
 
         if (guestItem.quantity <= stock && stock > 0) {
           mergedItems.push(guestItem);
@@ -400,20 +437,21 @@ const mergeCart = async (req, res) => {
       }
     }
 
-    userCart.items = mergedItems;
+    const cartTotal = calculateCartTotal(mergedItems);
+    const { data: finalCart, error: mergeError } = await supabase
+      .from('carts')
+      .update({ items: mergedItems, carttotal: cartTotal, sessionId: null })
+      .eq('id', userCart.id)
+      .select()
+      .single();
 
-    userCart.cartTotal = mergedItems.reduce(
-      (sum, item) => sum + item.quantity * (item.variant.salePrice || item.variant.price),
-      0
-    );
-    userCart.sessionId = null;
-    await userCart.save();
+    if (mergeError) throw mergeError;
 
-    await Cart.deleteOne({ sessionId });
+    await supabase.from('carts').delete().eq('id', guestCart.id);
 
     return res.json({
       message: 'Cart berhasil digabungkan.',
-      cart: userCart,
+      cart: { ...finalCart, _id: finalCart.id },
     });
   } catch (error) {
     console.error('Merge cart error:', error);

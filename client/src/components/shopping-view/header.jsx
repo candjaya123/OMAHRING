@@ -17,27 +17,45 @@ import { logoutUser } from '@/store/auth-slice';
 import UserCartWrapper from './cart-wrapper';
 import { useEffect, useState } from 'react';
 import { fetchCartItems } from '@/store/shop/cart-slice';
+import { fetchCategories } from '@/store/shop/common-slice';
 import { v4 as uuidv4 } from 'uuid';
 import logoOmahring from '@/assets/logo-omahring.png';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 
 function MenuItems() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openDropdown, setOpenDropdown] = useState(false);
+  const dispatch = useDispatch();
+  const { categoryList } = useSelector((state) => state.shopCommon);
+
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
 
   function handleNavigate(menuItem) {
     setOpenDropdown(false); // Close dropdown after clicking
     sessionStorage.removeItem('filters');
     const currentFilter =
-      menuItem.id !== 'home' && menuItem.id !== 'informasi' ? { category: [menuItem.id] } : null;
+      menuItem.id !== 'home' && menuItem.id !== 'informasi' && menuItem.id !== 'toko'
+        ? { category: [menuItem.id] }
+        : null;
 
     sessionStorage.setItem('filters', JSON.stringify(currentFilter));
 
-    if (location.pathname.includes('listing') && currentFilter !== null) {
-      setSearchParams(new URLSearchParams(`?category=${menuItem.id}`));
+    if (
+      location.pathname.includes('listing') &&
+      menuItem.id !== 'home' &&
+      menuItem.id !== 'informasi'
+    ) {
+      if (currentFilter !== null) {
+        setSearchParams(new URLSearchParams(`?category=${menuItem.id}`));
+      } else {
+        setSearchParams(new URLSearchParams(``));
+      }
     } else {
-      navigate(menuItem.path);
+      navigate(menuItem.path || `/shop/listing?category=${menuItem.id}`);
     }
   }
 
@@ -58,6 +76,7 @@ function MenuItems() {
           <div
             onMouseEnter={() => setOpenDropdown(true)}
             onMouseLeave={() => setOpenDropdown(false)}
+            onClick={() => handleNavigate({ id: 'toko', path: '/shop/listing' })}
             className="text-base font-semibold text-gray-800 cursor-pointer flex items-center hover:text-orange-500 transition-colors duration-300"
             role="button"
           >
@@ -70,20 +89,23 @@ function MenuItems() {
           onMouseEnter={() => setOpenDropdown(true)}
           onMouseLeave={() => setOpenDropdown(false)}
         >
-          {shoppingViewHeaderMenuItems
-            .filter((item) => item.id !== 'home' && item.id !== 'search')
-            .map((menuItem) => (
+          {categoryList && categoryList.length > 0 ? (
+            categoryList.map((categoryItem) => (
               <DropdownMenuItem
-                key={menuItem.id}
+                key={categoryItem.id}
                 onClick={() => {
-                  handleNavigate(menuItem);
-                  setOpenDropdown(false); // tutup setelah klik
+                  handleNavigate({ id: categoryItem.id, path: `/shop/listing` });
                 }}
                 className="text-sm font-medium text-gray-800 cursor-pointer px-3 py-2 hover:bg-orange-50 hover:text-orange-500 rounded-md transition-colors duration-300"
               >
-                {menuItem.label}
+                {categoryItem.label || categoryItem.name}
               </DropdownMenuItem>
-            ))}
+            ))
+          ) : (
+            <DropdownMenuItem disabled className="text-xs text-gray-400">
+              Tidak ada kategori
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -120,6 +142,7 @@ function HeaderRightContent() {
 
   return (
     <div className="flex lg:items-center lg:flex-row flex-col gap-6">
+      <LanguageSwitcher />
       <Sheet open={openCartSheet} onOpenChange={setOpenCartSheet}>
         <Button
           onClick={() => setOpenCartSheet(true)}

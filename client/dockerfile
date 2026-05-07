@@ -1,17 +1,29 @@
-FROM node:18-alpine
+# =========================
+# STAGE 1: BUILD
+# =========================
+FROM node:20-alpine AS builder
 
-# Set workdir
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
-RUN npm install
 
-# Copy source
+RUN npm ci && npm cache clean --force
+
 COPY . .
 
-# Expose frontend port
+RUN npm run build
+
+# =========================
+# STAGE 2: PRODUCTION
+# =========================
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN npm install serve && npm cache clean --force
+
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 3000
 
-# Run Vite dev server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npx", "serve", "-s", "dist", "-l", "3000"]

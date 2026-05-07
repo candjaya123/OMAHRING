@@ -1,4 +1,4 @@
-const Address = require("../../models/Address");
+const supabase = require("../../config/supabase");
 
 const addAddress = async (req, res) => {
   try {
@@ -11,20 +11,24 @@ const addAddress = async (req, res) => {
       });
     }
 
-    const newlyCreatedAddress = new Address({
-      userId,
-      address,
-      city,
-      pincode,
-      notes,
-      phone,
-    });
+    const { data: newlyCreatedAddress, error } = await supabase
+      .from("addresses")
+      .insert({
+        user_id: userId,
+        address,
+        city,
+        pincode,
+        notes,
+        phone,
+      })
+      .select()
+      .single();
 
-    await newlyCreatedAddress.save();
+    if (error) throw error;
 
     res.status(201).json({
       success: true,
-      data: newlyCreatedAddress,
+      data: { ...newlyCreatedAddress, _id: newlyCreatedAddress.id },
     });
   } catch (e) {
     console.log(e);
@@ -45,11 +49,16 @@ const fetchAllAddress = async (req, res) => {
       });
     }
 
-    const addressList = await Address.find({ userId });
+    const { data: addressList, error } = await supabase
+      .from("addresses")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (error) throw error;
 
     res.status(200).json({
       success: true,
-      data: addressList,
+      data: addressList.map((addr) => ({ ...addr, _id: addr.id })),
     });
   } catch (e) {
     console.log(e);
@@ -72,14 +81,15 @@ const editAddress = async (req, res) => {
       });
     }
 
-    const address = await Address.findOneAndUpdate(
-      {
-        _id: addressId,
-        userId,
-      },
-      formData,
-      { new: true }
-    );
+    const { data: address, error } = await supabase
+      .from("addresses")
+      .update(formData)
+      .eq("id", addressId)
+      .eq("user_id", userId)
+      .select()
+      .single();
+
+    if (error) throw error;
 
     if (!address) {
       return res.status(404).json({
@@ -90,7 +100,7 @@ const editAddress = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: address,
+      data: { ...address, _id: address.id },
     });
   } catch (e) {
     console.log(e);
@@ -111,7 +121,15 @@ const deleteAddress = async (req, res) => {
       });
     }
 
-    const address = await Address.findOneAndDelete({ _id: addressId, userId });
+    const { data: address, error } = await supabase
+      .from("addresses")
+      .delete()
+      .eq("id", addressId)
+      .eq("user_id", userId)
+      .select()
+      .single();
+
+    if (error) throw error;
 
     if (!address) {
       return res.status(404).json({

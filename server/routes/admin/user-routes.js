@@ -1,5 +1,5 @@
 const express = require("express");
-const User = require("../../models/User"); // 🔹 Pastikan path ke model User sudah benar
+const supabase = require("../../config/supabase");
 
 const router = express.Router();
 
@@ -9,8 +9,11 @@ const router = express.Router();
 // =================================================================
 router.get("/get", async (req, res) => {
   try {
-    // Mengambil semua pengguna dari database, tanpa menyertakan password mereka
-    const users = await User.find({}).select("-password");
+    const { data: users, error } = await supabase
+      .from("users")
+      .select("id, userName, email, role, created_at");
+
+    if (error) throw error;
 
     if (!users || users.length === 0) {
       return res.status(404).json({
@@ -21,7 +24,7 @@ router.get("/get", async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: users,
+      data: users.map(user => ({ ...user, _id: user.id })),
     });
   } catch (error) {
     console.error("Error saat mengambil data pengguna:", error);
@@ -49,22 +52,31 @@ router.put("/update-role/:userId", async (req, res) => {
   }
 
   try {
-    const userToUpdate = await User.findById(userId);
+    const { data: userToUpdate, error: fetchError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
 
-    if (!userToUpdate) {
+    if (fetchError || !userToUpdate) {
       return res.status(404).json({
         success: false,
         message: "Pengguna tidak ditemukan.",
       });
     }
 
-    // Memperbarui peran pengguna
-    userToUpdate.role = role;
-    await userToUpdate.save();
+    const { data: updatedUser, error: updateError } = await supabase
+      .from("users")
+      .update({ role })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
 
     return res.status(200).json({
       success: true,
-      message: `Peran untuk ${userToUpdate.userName} berhasil diperbarui menjadi ${role}.`,
+      message: `Peran untuk ${updatedUser.userName} berhasil diperbarui menjadi ${role}.`,
     });
   } catch (error) {
     console.error("Error saat memperbarui peran pengguna:", error);
@@ -75,4 +87,4 @@ router.put("/update-role/:userId", async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;

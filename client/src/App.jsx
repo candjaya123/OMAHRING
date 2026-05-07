@@ -8,6 +8,7 @@ import AdminProducts from './pages/admin-view/products';
 import AdminOrders from './pages/admin-view/orders';
 import AdminCustomersView from './pages/admin-view/customers';
 import AdminFeatures from './pages/admin-view/features';
+import AdminSettings from './pages/admin-view/settings';
 import AdminPromosView from './pages/admin-view/promos'; // 🔹 1. Impor halaman promo
 import ShoppingLayout from './components/shopping-view/layout';
 import NotFound from './pages/not-found';
@@ -25,12 +26,17 @@ import PaymentSuccessPage from './pages/shopping-view/payment-success';
 import SearchProducts from './pages/shopping-view/search';
 import BlogPage from './pages/shopping-view/blog';
 import MembershipPage from './pages/shopping-view/membership'; // 🔹 1. Impor halaman baru
+import AdminArticles from './pages/admin-view/articles'; // 🔹 Impor halaman artikel
+import MemberDashboard from './pages/member-view/dashboard';
 import AdminReportsView from './pages/admin-view/reports'; // 🔹 1. Impor halaman laporan
 import AdminManagementView from './pages/admin-view/manage-admins'; // 🔹 1. Impor halaman baru
 import ProductDetailPage from './pages/shopping-view/product-detail';
 import { v4 as uuidv4 } from 'uuid';
 import PaymentPendingPage from './pages/shopping-view/payment-pending';
 import { ToastContainer } from 'react-toastify';
+import BirdProfile from './pages/bird-profile';
+
+import AdminChatLogs from './pages/admin-view/chat-logs';
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
@@ -93,12 +99,27 @@ function App() {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="customers" element={<AdminCustomersView />} />
           <Route path="promos" element={<AdminPromosView />} />{' '}
+          <Route path="articles" element={<AdminArticles />} />{' '}
           {/* 🔹 2. Tambahkan rute baru di sini */}
           <Route path="reports" element={<AdminReportsView />} />{' '}
           {/* 🔹 2. Tambahkan rute baru di sini */}
           <Route path="manage-admins" element={<AdminManagementView />} />{' '}
           {/* 🔹 2. Tambahkan rute baru di sini */}
           <Route path="features" element={<AdminFeatures />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="chat-logs" element={<AdminChatLogs />} />
+        </Route>
+
+        {/* member → wajib login member */}
+        <Route
+          path="/member"
+          element={
+            <CheckAuth isAuthenticated={isAuthenticated} user={user}>
+              <ShoppingLayout />
+            </CheckAuth>
+          }
+        >
+          <Route path="dashboard" element={<MemberDashboard />} />
         </Route>
 
         {/* shop → bebas login */}
@@ -115,6 +136,7 @@ function App() {
           <Route path="account" element={<ShoppingAccount />} />
         </Route>
 
+        <Route path="/birds/:id" element={<BirdProfile />} />
         <Route path="/unauth-page" element={<UnauthPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

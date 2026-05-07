@@ -1,4 +1,5 @@
-const User = require('../../models/User');
+const supabase = require('../../config/supabase');
+const bcrypt = require('bcryptjs');
 
 // =================================================================
 // Middleware: Validasi akses berdasarkan role
@@ -29,15 +30,25 @@ const getAllUsers = async (req, res) => {
 
     // Manager dapat melihat admin & manager
     if (requesterRole === 'manager') {
-      users = await User.find({ role: { $in: ['admin', 'manager'] } })
-        .select('-password')
-        .sort({ createdAt: -1 });
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, userName, email, role, created_at, updated_at')
+        .in('role', ['admin', 'manager'])
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      users = data;
     }
     // Admin dapat melihat user & member
     else if (requesterRole === 'admin') {
-      users = await User.find({ role: { $in: ['user', 'member'] } })
-        .select('-password')
-        .sort({ createdAt: -1 });
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, userName, email, role, created_at, updated_at')
+        .in('role', ['user', 'member'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      users = data;
     }
     // Role lain tidak memiliki akses
     else {
@@ -49,7 +60,7 @@ const getAllUsers = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: users,
+      data: users.map(u => ({ ...u, _id: u.id })),
       count: users.length,
     });
   } catch (error) {
@@ -100,7 +111,13 @@ const createUser = async (req, res) => {
     }
 
     // Cek apakah email sudah terdaftar
-    const existingUser = await User.findOne({ email });
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -109,20 +126,26 @@ const createUser = async (req, res) => {
     }
 
     // Buat user baru
-    const newUser = new User({
-      userName,
-      email,
-      password, // Pastikan password di-hash di model User (pre-save hook)
-      role,
-    });
+    const hashPassword = await bcrypt.hash(password, 12);
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert({
+        userName,
+        email,
+        password: hashPassword,
+        role,
+      })
+      .select()
+      .single();
 
-    await newUser.save();
+    if (insertError) throw insertError;
 
     return res.status(201).json({
       success: true,
       message: `${role} baru berhasil dibuat.`,
       data: {
-        id: newUser._id,
+        id: newUser.id,
+        _id: newUser.id,
         userName: newUser.userName,
         email: newUser.email,
         role: newUser.role,
@@ -156,7 +179,13 @@ const updateUserRole = async (req, res) => {
     }
 
     // Cari user yang akan diupdate
-    const userToUpdate = await User.findById(userId);
+    const { data: userToUpdate, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
     if (!userToUpdate) {
       return res.status(404).json({
         success: false,
@@ -184,17 +213,24 @@ const updateUserRole = async (req, res) => {
 
     // Update role
     const oldRole = userToUpdate.role;
-    userToUpdate.role = newRole;
-    await userToUpdate.save();
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('users')
+      .update({ role: newRole })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
 
     return res.status(200).json({
       success: true,
-      message: `Role ${userToUpdate.userName} berhasil diubah dari ${oldRole} menjadi ${newRole}.`,
+      message: `Role ${updatedUser.userName} berhasil diubah dari ${oldRole} menjadi ${newRole}.`,
       data: {
-        id: userToUpdate._id,
-        userName: userToUpdate.userName,
-        email: userToUpdate.email,
-        role: userToUpdate.role,
+        id: updatedUser.id,
+        _id: updatedUser.id,
+        userName: updatedUser.userName,
+        email: updatedUser.email,
+        role: updatedUser.role,
       },
     });
   } catch (error) {
@@ -216,7 +252,13 @@ const deleteUser = async (req, res) => {
     const requesterId = req.user.id;
 
     // Cari user yang akan dihapus
-    const userToDelete = await User.findById(userId);
+    const { data: userToDelete, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
     if (!userToDelete) {
       return res.status(404).json({
         success: false,
@@ -254,7 +296,12 @@ const deleteUser = async (req, res) => {
       });
     }
 
-    await User.findByIdAndDelete(userId);
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (deleteError) throw deleteError;
 
     return res.status(200).json({
       success: true,
@@ -277,7 +324,13 @@ const getUserById = async (req, res) => {
     const { userId } = req.params;
     const requesterRole = req.user.role;
 
-    const user = await User.findById(userId).select('-password');
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('id, userName, email, role, created_at, updated_at')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -299,7 +352,7 @@ const getUserById = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: user,
+      data: { ...user, _id: user.id },
     });
   } catch (error) {
     console.error('Error saat mengambil detail pengguna:', error);

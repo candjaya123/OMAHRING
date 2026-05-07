@@ -1,0 +1,25 @@
+{
+  "hero": {
+    "title": "Omahring – Jadikan burung juara anda sebagai kebanggaan",
+    "subtitle": "Ring eksklusif meningkatkan nilai dan identiti burung anda."
+  },
+  "sections": {
+    "products": "Produk Kami",
+    "bird_champion": "Info Burung Juara",
+    "membership": "Keahlian",
+    "education": "Pendidikan & Info"
+  },
+  "membership": {
+    "benefits": "Kelebihan Ahli",
+    "discount": "Diskaun Khas",
+    "register": "Daftar Pembiak/Burung",
+    "branding": "Pendedahan Penjenamaan",
+    "barcode": "Barcode untuk Identiti Burung"
+  },
+  "auth": {
+    "nik": "Nombor KPP (NIK)",
+    "phone": "No Telefon",
+    "register": "Daftar",
+    "login": "Log Masuk"
+  }
+}

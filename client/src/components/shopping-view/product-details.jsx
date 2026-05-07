@@ -8,13 +8,15 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import StarRatingComponent from '../common/star-rating';
-import { addToCart, fetchCartItems } from '@/store/shop/cart-slice'; // Tambah fetchCartItems
+import { addToCart, fetchCartItems } from '@/store/shop/cart-slice';
 import { setProductDetails } from '@/store/shop/products-slice';
 import { addReview, getReviews } from '@/store/shop/review-slice';
 import { v4 as uuidv4 } from 'uuid';
+import { ChevronLeft, ChevronRight, Package, ShieldCheck, Truck } from 'lucide-react';
 
 function ProductDetailsDialog({ open, setOpen, productDetails }) {
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [reviewMsg, setReviewMsg] = useState('');
   const [rating, setRating] = useState(0);
 
@@ -25,17 +27,17 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
 
   useEffect(() => {
     if (productDetails?.variants?.length > 0) {
-      // default pilih varian dengan stok > 0
-      const defaultVariant =
-        productDetails.variants.find((v) => v.totalStock > 0) || productDetails.variants[0];
-      setSelectedVariant(defaultVariant);
+      setSelectedVariant(productDetails.variants[0]);
     }
     if (productDetails?._id) {
       dispatch(getReviews(productDetails._id));
     }
   }, [productDetails, dispatch]);
 
-  // === ADD TO CART ===
+  const images = productDetails?.media?.images || [];
+  const video = productDetails?.media?.video;
+  const allMedia = [...images, ...(video ? [video] : [])];
+
   const handleAddToCart = () => {
     if (!selectedVariant) return;
 
@@ -47,50 +49,39 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
 
     dispatch(
       addToCart({
-        userId: user?.id || null, // jika guest bisa null
+        userId: user?.id || null,
+        sessionId: user?.id ? null : sessionId,
         productId: productDetails?._id,
         quantity: 1,
         variant: {
-          name: selectedVariant.name,
+          name: selectedVariant.combination.join(' - '),
           price: selectedVariant.salePrice > 0 ? selectedVariant.salePrice : selectedVariant.price,
         },
       })
     ).then((result) => {
       if (result.payload?.success) {
-        toast({ title: 'Produk ditambahkan ke keranjang.' });
-        // Refresh keranjang
-        const id = user?.id || sessionId;
-        dispatch(fetchCartItems(id));
-      } else {
-        toast({
-          title: 'Gagal menambahkan ke keranjang.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Ditambahkan ke keranjang' });
+        dispatch(fetchCartItems(user?.id || sessionId));
       }
     });
   };
 
-  // === ADD REVIEW ===
   const handleAddReview = () => {
     if (!user?.id) {
-      toast({ title: 'Anda harus login untuk menulis ulasan.', variant: 'destructive' });
+      toast({ title: 'Login diperlukan', variant: 'destructive' });
       return;
     }
-
-    dispatch(
-      addReview({
-        productId: productDetails?._id,
-        userId: user._id,
-        userName: user.userName,
-        reviewMessage: reviewMsg,
-        reviewValue: rating,
-      })
-    ).then((data) => {
+    dispatch(addReview({
+      productId: productDetails?._id,
+      userId: user._id,
+      userName: user.userName,
+      reviewMessage: reviewMsg,
+      reviewValue: rating,
+    })).then((data) => {
       if (data.payload.success) {
         setRating(0);
         setReviewMsg('');
         dispatch(getReviews(productDetails?._id));
-        toast({ title: 'Ulasan berhasil ditambahkan!' });
       }
     });
   };
@@ -98,143 +89,134 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
   const handleDialogClose = () => {
     setOpen(false);
     dispatch(setProductDetails(null));
-    setRating(0);
-    setReviewMsg('');
-    setSelectedVariant(null);
+    setCurrentImageIndex(0);
   };
-
-  const averageReview =
-    reviews && reviews.length > 0
-      ? reviews.reduce((sum, item) => sum + item.reviewValue, 0) / reviews.length
-      : 0;
 
   if (!productDetails) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-4 md:p-8 bg-gray-50">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          {/* Kolom Gambar */}
-          <div className="relative overflow-hidden rounded-lg aspect-square">
-            <img
-              src={productDetails.image}
-              alt={productDetails.title}
-              className="w-full h-full object-cover"
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto p-0 bg-white grid grid-cols-1 md:grid-cols-12 gap-0 overflow-x-hidden rounded-xl">
+        {/* Gallery Section */}
+        <div className="md:col-span-6 bg-gray-50 flex flex-col relative">
+          <div className="flex-1 relative group bg-gray-100 flex items-center justify-center min-h-[300px] md:min-h-[400px]">
+            {currentImageIndex < images.length ? (
+              <img src={allMedia[currentImageIndex]} className="max-h-full object-contain mx-auto mix-blend-multiply" alt="Preview" />
+            ) : (
+              <video src={video} className="w-full h-full object-cover" controls autoPlay muted />
+            )}
+            
+            {allMedia.length > 1 && (
+              <>
+                <button 
+                  disabled={currentImageIndex === 0}
+                  onClick={() => setCurrentImageIndex(prev => prev - 1)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-2 text-gray-700 hover:text-orange-500 rounded-full shadow-sm disabled:opacity-0 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5"/>
+                </button>
+                <button 
+                  disabled={currentImageIndex === allMedia.length - 1}
+                  onClick={() => setCurrentImageIndex(prev => prev + 1)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-2 text-gray-700 hover:text-orange-500 rounded-full shadow-sm disabled:opacity-0 transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5"/>
+                </button>
+              </>
+            )}
+          </div>
+          
+          <div className="p-4 flex gap-3 overflow-x-auto no-scrollbar bg-white border-t border-gray-100">
+            {allMedia.map((url, i) => (
+              <div 
+                key={i} 
+                onClick={() => setCurrentImageIndex(i)}
+                className={`w-16 h-16 rounded-md p-0.5 cursor-pointer shrink-0 bg-white transition-all ${currentImageIndex === i ? 'ring-2 ring-orange-500' : 'ring-1 ring-gray-200 hover:ring-orange-300'}`}
+              >
+                {i < images.length ? (
+                  <img src={url} className="w-full h-full object-cover rounded-sm" />
+                ) : (
+                  <div className="w-full h-full bg-gray-900 rounded-sm flex items-center justify-center text-white text-[9px] font-bold">VIDEO</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className="md:col-span-6 p-6 lg:p-8 flex flex-col space-y-5 overflow-y-auto bg-white">
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              {productDetails.category?.map(c => <span key={c} className="text-[10px] bg-orange-50 text-orange-600 px-2.5 py-1 rounded-sm font-semibold uppercase tracking-wider">{c}</span>)}
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug">{productDetails.title}</h1>
+            <div className="flex items-center gap-2 pt-1 border-b border-gray-100 pb-3">
+              <StarRatingComponent rating={4.5} />
+              <span className="text-xs text-gray-500 font-medium">4.5 Rating &bull; 0 Terjual</span>
+            </div>
+          </div>
+
+          <div className="space-y-1 py-1">
+             <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-orange-600">
+                  Rp {(selectedVariant?.salePrice || selectedVariant?.price || 0).toLocaleString('id-ID')}
+                </span>
+                {selectedVariant?.salePrice > 0 && (
+                  <span className="text-sm line-through text-gray-400">
+                    Rp {selectedVariant.price.toLocaleString('id-ID')}
+                  </span>
+                )}
+             </div>
+             <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 pt-1">
+                Stok tersedia: {selectedVariant?.totalStock || 0}
+             </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+             <Label className="text-xs font-semibold text-gray-700 block">Pilih Variasi Produk</Label>
+             <div className="flex flex-wrap gap-2.5">
+                {productDetails.variants?.map((v, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedVariant(v)}
+                    className={`h-10 px-4 rounded-md text-xs font-medium transition-colors border ${selectedVariant === v ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-300 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50/50'}`}
+                  >
+                    {v.combination.join(' - ')}
+                  </button>
+                ))}
+             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-3">
+            <div className="p-3 border border-gray-100 rounded-lg flex items-center gap-3 bg-gray-50/50">
+               <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600"><ShieldCheck className="w-4 h-4"/></div>
+               <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-medium">Garansi</span><span className="text-xs font-bold text-gray-800">{productDetails.attributes?.warrantyType || 'Tidak Ada'}</span></div>
+            </div>
+            <div className="p-3 border border-gray-100 rounded-lg flex items-center gap-3 bg-gray-50/50">
+               <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600"><Truck className="w-4 h-4"/></div>
+               <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-medium">Pengiriman</span><span className="text-xs font-bold text-gray-800">Cepat & Aman</span></div>
+            </div>
+          </div>
+
+          <Separator className="bg-gray-100" />
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Deskripsi Produk</h3>
+            <div 
+              className="text-sm text-gray-600 leading-relaxed max-h-[250px] overflow-y-auto description-view pr-2"
+              dangerouslySetInnerHTML={{ __html: productDetails.description }}
             />
           </div>
 
-          {/* Kolom Detail Produk */}
-          <div className="flex flex-col space-y-4">
-            <div>
-              <p className="text-sm text-gray-500">{productDetails.category}</p>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                {productDetails.title}
-              </h1>
-              <p className="text-gray-600 text-base mt-2">{productDetails.description}</p>
-            </div>
-
-            {/* Pemilihan Varian */}
-            <div className="pt-2 md:pt-4">
-              <Label className="font-semibold text-gray-800">Pilih Varian:</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {productDetails.variants.map((variant) => (
-                  <Button
-                    key={variant.name}
-                    variant={selectedVariant?.name === variant.name ? 'default' : 'outline'}
-                    onClick={() => setSelectedVariant(variant)}
-                    disabled={variant.totalStock === 0}
-                    className={`
-                      ${
-                        selectedVariant?.name === variant.name
-                          ? 'bg-orange-500 hover:bg-orange-600 border-orange-500 text-white'
-                          : 'bg-white'
-                      }
-                      ${variant.totalStock === 0 ? 'cursor-not-allowed line-through' : ''}
-                    `}
-                  >
-                    {variant.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tampilan Harga & Stok */}
-            {selectedVariant && (
-              <div className="pt-2">
-                <div className="flex items-baseline gap-3">
-                  {selectedVariant.salePrice > 0 && (
-                    <p className="text-2xl md:text-3xl font-bold text-red-600">
-                      Rp {selectedVariant.salePrice.toLocaleString('id-ID')}
-                    </p>
-                  )}
-                  <p
-                    className={`text-xl md:text-2xl font-bold ${
-                      selectedVariant.salePrice > 0 ? 'line-through text-gray-500' : 'text-gray-900'
-                    }`}
-                  >
-                    Rp {selectedVariant.price.toLocaleString('id-ID')}
-                  </p>
-                </div>
-                <p className="text-sm mt-1 text-gray-600">
-                  Stok tersedia: {selectedVariant.totalStock}
-                </p>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <StarRatingComponent rating={averageReview} />
-              <span className="text-gray-500 text-sm">({averageReview.toFixed(1)})</span>
-            </div>
-
-            {/* Tombol Aksi */}
-            <div className="pt-2 md:pt-4">
-              <Button
-                className="w-full bg-orange-500 hover:bg-orange-600 text-base md:text-lg py-5 md:py-6"
-                onClick={handleAddToCart}
-                disabled={!selectedVariant || selectedVariant.totalStock === 0}
-              >
-                {!selectedVariant || selectedVariant.totalStock === 0
-                  ? 'Stok Habis'
-                  : 'Tambah ke Keranjang'}
-              </Button>
-            </div>
-
-            <Separator className="my-2 md:my-4" />
-
-            {/* Bagian Ulasan */}
-            <div className="flex-grow overflow-y-auto max-h-[200px] pr-2 space-y-4">
-              <h2 className="text-xl font-bold text-gray-800">Ulasan Pelanggan</h2>
-              {reviews && reviews.length > 0 ? (
-                reviews.map((review) => (
-                  <div key={review._id} className="flex gap-4">
-                    <Avatar className="w-10 h-10 border">
-                      <AvatarFallback>{review.userName[0].toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-bold text-gray-900">{review.userName}</h3>
-                      <StarRatingComponent rating={review.reviewValue} />
-                      <p className="text-gray-600 text-sm mt-1">{review.reviewMessage}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500">Belum ada ulasan untuk produk ini.</p>
-              )}
-            </div>
-
-            {/* Form Tambah Ulasan */}
-            <div className="flex flex-col gap-2 pt-4 border-t">
-              <Label className="font-semibold text-gray-800">Tulis Ulasan Anda</Label>
-              <StarRatingComponent rating={rating} handleRatingChange={setRating} />
-              <Input
-                value={reviewMsg}
-                onChange={(e) => setReviewMsg(e.target.value)}
-                placeholder="Bagaimana pendapat Anda tentang produk ini?"
-              />
-              <Button onClick={handleAddReview} disabled={reviewMsg.trim() === '' || rating === 0}>
-                Kirim Ulasan
-              </Button>
-            </div>
+          <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t border-gray-100 mt-auto">
+            <Button
+              className="w-full h-12 rounded-lg bg-orange-500 hover:bg-orange-600 text-base font-semibold text-white shadow-sm transition-colors"
+              onClick={handleAddToCart}
+              disabled={!selectedVariant || selectedVariant.totalStock === 0}
+            >
+              <ShoppingCart className="w-5 h-5 mr-2" />
+              {selectedVariant?.totalStock === 0 ? 'Stok Habis' : 'Tambah ke Keranjang'}
+            </Button>
           </div>
         </div>
       </DialogContent>

@@ -67,3 +67,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.description-view h1 { @apply text-2xl font-bold mb-4; }
+.description-view h2 { @apply text-xl font-bold mb-3; }
+.description-view ul { @apply list-disc ml-5 mb-4; }
+.description-view ol { @apply list-decimal ml-5 mb-4; }
+.description-view p { @apply mb-2; }
+.description-view blockquote { @apply border-l-4 border-gray-300 pl-4 italic my-4; }
+.description-view a { @apply text-blue-600 underline; }

@@ -11,9 +11,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { sortOptions } from '@/config';
 import { fetchAllFilteredProducts } from '@/store/shop/products-slice';
+import { fetchAllCategories } from '@/store/admin/category-slice'; // 🔹 Import untuk Dynamic Categories
 import { getFeatureImages } from '@/store/common-slice';
 import { ArrowUpDownIcon, ChevronLeftIcon, ChevronRightIcon, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -40,6 +41,7 @@ function ShoppingListing() {
   const dispatch = useDispatch();
   const { productList, productDetails } = useSelector((state) => state.shopProducts);
   const { featureImageList } = useSelector((state) => state.commonFeature);
+  const { categoryList } = useSelector((state) => state.adminCategory); // 🔹 Dapatkan categories
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -100,6 +102,7 @@ function ShoppingListing() {
 
   useEffect(() => {
     dispatch(getFeatureImages());
+    dispatch(fetchAllCategories()); // 🔹 Fetch categories on load
   }, [dispatch]);
 
   useEffect(() => {
@@ -108,6 +111,13 @@ function ShoppingListing() {
     }, 12000);
     return () => clearInterval(timer);
   }, [featureImageList]);
+
+  // 🔹 Membuat option filter secara dinamis
+  const dynamicFilterOptions = useMemo(() => {
+    return {
+      category: categoryList ? categoryList.map((c) => ({ id: c.id, label: c.label })) : []
+    };
+  }, [categoryList]);
 
   return (
     <div className="flex flex-col">
@@ -155,7 +165,8 @@ function ShoppingListing() {
 
       {/* Product Listing Section */}
       <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 p-4 md:p-6">
-        <ProductFilter filters={filters} handleFilter={handleFilter} />
+        <ProductFilter filters={filters} handleFilter={handleFilter} filterOptionsData={dynamicFilterOptions} />
+
         <div className="bg-background w-full rounded-lg shadow-sm">
           <div className="p-4 border-b flex items-center justify-between">
             <h2 className="text-lg font-extrabold text-gray-800">Semua Produk</h2>

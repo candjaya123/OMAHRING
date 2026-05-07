@@ -1,0 +1,25 @@
+{
+  "hero": {
+    "title": "Omahring – Make your champion bird your pride",
+    "subtitle": "Exclusive rings increase the value and identity of your bird."
+  },
+  "sections": {
+    "products": "Our Products",
+    "bird_champion": "Champion Bird Info",
+    "membership": "Membership",
+    "education": "Education & Info"
+  },
+  "membership": {
+    "benefits": "Member Benefits",
+    "discount": "Special Discount",
+    "register": "Register Breeder/Bird",
+    "branding": "Branding Exposure",
+    "barcode": "Barcode for Bird Identity"
+  },
+  "auth": {
+    "nik": "ID Number (NIK)",
+    "phone": "Phone Number",
+    "register": "Register",
+    "login": "Login"
+  }
+}

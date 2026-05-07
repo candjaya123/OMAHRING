@@ -1,4 +1,4 @@
-const Product = require("../../models/Product");
+const supabase = require("../../config/supabase");
 
 const searchProducts = async (req, res) => {
   try {
@@ -10,22 +10,16 @@ const searchProducts = async (req, res) => {
       });
     }
 
-    const regEx = new RegExp(keyword, "i");
+    const { data: searchResults, error } = await supabase
+      .from('products')
+      .select('*')
+      .or(`title.ilike.%${keyword}%,description.ilike.%${keyword}%,category.cs.["${keyword}"],attributes->>brand.ilike.%${keyword}%`);
 
-    const createSearchQuery = {
-      $or: [
-        { title: regEx },
-        { description: regEx },
-        { category: regEx },
-        { brand: regEx },
-      ],
-    };
-
-    const searchResults = await Product.find(createSearchQuery);
+    if (error) throw error;
 
     res.status(200).json({
       success: true,
-      data: searchResults,
+      data: searchResults.map(p => ({ ...p, _id: p.id })),
     });
   } catch (error) {
     console.log(error);

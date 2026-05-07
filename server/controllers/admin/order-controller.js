@@ -1,10 +1,14 @@
-const Order = require('../../models/Order');
+const supabase = require('../../config/supabase');
 
 const getAllOrdersOfAllUsers = async (req, res) => {
   try {
-    const orders = await Order.find({});
+    const { data: orders, error: fetchError } = await supabase
+      .from('orders')
+      .select('*');
 
-    if (!orders.length) {
+    if (fetchError) throw fetchError;
+
+    if (!orders || !orders.length) {
       return res.status(404).json({
         success: false,
         message: 'No orders found!',
@@ -13,7 +17,7 @@ const getAllOrdersOfAllUsers = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: orders,
+      data: orders.map(o => ({ ...o, _id: o.id })),
     });
   } catch (e) {
     console.log(e);
@@ -28,7 +32,13 @@ const getOrderDetailsForAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const order = await Order.findById(id);
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
 
     if (!order) {
       return res.status(404).json({
@@ -39,7 +49,7 @@ const getOrderDetailsForAdmin = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: order,
+      data: { ...order, _id: order.id },
     });
   } catch (e) {
     console.log(e);
@@ -53,9 +63,15 @@ const getOrderDetailsForAdmin = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { orderStatus } = req.body;
+    const { orderStatus, trackingNumber } = req.body;
 
-    const order = await Order.findById(id);
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
 
     if (!order) {
       return res.status(404).json({
@@ -64,16 +80,24 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
-      { orderStatus },
-      { new: true, runValidators: true } // new: true untuk data baru, runValidators untuk validasi
-    );
+    const updatePayload = { orderStatus };
+    if (trackingNumber !== undefined) {
+      updatePayload.trackingNumber = trackingNumber;
+    }
+
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from('orders')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
 
     res.status(200).json({
       success: true,
       message: 'Order status is updated successfully!',
-      data: updatedOrder,
+      data: { ...updatedOrder, _id: updatedOrder.id },
     });
   } catch (e) {
     console.log(e);

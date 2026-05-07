@@ -1,17 +1,20 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
-# Set workdir
 WORKDIR /app
 
-# Install dependencies
+# Copy hanya dependency
 COPY package*.json ./
-RUN npm install
+
+# Install production only + clean cache
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy source
 COPY . .
 
-# Expose backend port
+# Pakai user non-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
 EXPOSE 5005
 
-# Start server
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

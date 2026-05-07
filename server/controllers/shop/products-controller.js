@@ -1,53 +1,52 @@
-const Product = require("../../models/Product");
+const supabase = require("../../config/supabase");
 
 const getFilteredProducts = async (req, res) => {
   try {
-    const { category = [], brand = [], sortBy = "price-lowtohigh" } = req.query;
+    const { category = "", brand = "", sortBy = "price-lowtohigh" } = req.query;
 
-    let filters = {};
+    let query = supabase.from('products').select('*');
 
-    if (category.length) {
-      filters.category = { $in: category.split(",") };
+    if (category) {
+      const categoryList = category.split(",");
+      const orQuery = categoryList.map(cat => `category.cs.[${JSON.stringify(cat)}]`).join(",");
+      query = query.or(orQuery);
     }
 
-    if (brand.length) {
-      filters.brand = { $in: brand.split(",") };
+    if (brand) {
+      const brandList = brand.split(",");
+      // Filtering deep in attributes JSONB
+      query = query.filter('attributes->>brand', 'in', `(${brandList.join(',')})`);
     }
-
-    let sort = {};
 
     switch (sortBy) {
       case "price-lowtohigh":
-        sort.price = 1;
-
+        // Sorting by price inside JSONB variants (assuming first variant price)
+        query = query.order('variants->0->>price', { ascending: true });
         break;
       case "price-hightolow":
-        sort.price = -1;
-
+        query = query.order('variants->0->>price', { ascending: false });
         break;
       case "title-atoz":
-        sort.title = 1;
-
+        query = query.order('title', { ascending: true });
         break;
-
       case "title-ztoa":
-        sort.title = -1;
-
+        query = query.order('title', { ascending: false });
         break;
-
       default:
-        sort.price = 1;
+        query = query.order('variants->0->>price', { ascending: true });
         break;
     }
 
-    const products = await Product.find(filters).sort(sort);
+    const { data: products, error: fetchError } = await query;
+
+    if (fetchError) throw fetchError;
 
     res.status(200).json({
       success: true,
-      data: products,
+      data: products.map(p => ({ ...p, _id: p.id })),
     });
   } catch (e) {
-    console.log(error);
+    console.error(e);
     res.status(500).json({
       success: false,
       message: "Some error occured",
@@ -58,7 +57,13 @@ const getFilteredProducts = async (req, res) => {
 const getProductDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const { data: product, error: fetchError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
 
     if (!product)
       return res.status(404).json({
@@ -68,10 +73,10 @@ const getProductDetails = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: product,
+      data: { ...product, _id: product.id },
     });
   } catch (e) {
-    console.log(error);
+    console.error(e);
     res.status(500).json({
       success: false,
       message: "Some error occured",

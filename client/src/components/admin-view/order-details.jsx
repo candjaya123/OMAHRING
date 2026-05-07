@@ -17,21 +17,21 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { formatPrice } from '@/utils/currencyFormatters';
 import { getOrderStatus, ORDER_STATUS_OPTIONS } from '@/constant/order-status';
 import { getPaymentStatus } from '@/constant/payment-status';
 
 export function AdminOrderDetailsDialog({ orderDetails, onUpdateStatus, isLoading }) {
   const [newStatus, setNewStatus] = useState(orderDetails?.orderStatus);
+  const [trackingNumber, setTrackingNumber] = useState(orderDetails?.trackingNumber || '');
 
   if (!orderDetails) {
     return null;
   }
 
   const handleUpdateClick = () => {
-    console.log(newStatus);
-
-    onUpdateStatus(orderDetails._id, newStatus);
+    onUpdateStatus(orderDetails._id, newStatus, trackingNumber);
   };
 
   return (
@@ -60,6 +60,14 @@ export function AdminOrderDetailsDialog({ orderDetails, onUpdateStatus, isLoadin
               <p className="text-sm text-muted-foreground italic">
                 Notes: {orderDetails.addressInfo.notes}
               </p>
+            )}
+            {orderDetails.trackingNumber && (
+              <div className="mt-2 pt-2 border-t border-dashed border-gray-200">
+                <p className="text-sm font-semibold text-gray-700">Nomor Resi / Pelacakan:</p>
+                <p className="text-sm font-mono text-orange-600 bg-orange-50 px-2 py-1 rounded inline-block mt-1">
+                  {orderDetails.trackingNumber}
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -139,9 +147,23 @@ export function AdminOrderDetailsDialog({ orderDetails, onUpdateStatus, isLoadin
             </SelectContent>
           </Select>
         </div>
+        
+        <div className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto transition-opacity duration-300 ${['inShipping', 'shipped', 'delivered'].includes(newStatus) ? 'opacity-100' : 'opacity-50'}`}>
+          <Label htmlFor="tracking-number" className="whitespace-nowrap">
+            Nomor Resi
+          </Label>
+          <Input 
+            id="tracking-number"
+            placeholder="Input Resi (Opsional)" 
+            value={trackingNumber}
+            onChange={(e) => setTrackingNumber(e.target.value)}
+            className="w-full sm:w-[200px]"
+          />
+        </div>
+
         <Button
           onClick={handleUpdateClick}
-          disabled={newStatus === orderDetails.orderStatus || isLoading}
+          disabled={(newStatus === orderDetails.orderStatus && trackingNumber === (orderDetails.trackingNumber || '')) || isLoading}
         >
           {isLoading ? 'Saving...' : 'Save Changes'}
         </Button>

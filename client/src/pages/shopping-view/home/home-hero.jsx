@@ -1,44 +1,59 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight, Star, Users, Award, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+
+const defaultHeroImages = [
+  {
+    url: 'https://images.unsplash.com/photo-1555169062-013468b47731?q=80&w=1974&auto=format&fit=crop',
+    alt: 'Burung eksotis di habitat alami',
+    title: 'Ring Berkualitas untuk Sang Juara',
+    subtitle:
+      'Temukan ring burung premium, pakan bernutrisi, dan aksesoris terbaik yang dirancang untuk menunjang performa dan keindahan burung kesayangan Anda.',
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1520808663317-647b476a81b9?q=80&w=1173&auto=format&fit=crop',
+    alt: 'Burung cantik dengan ring premium',
+    title: 'Aksesoris Premium untuk Burung Terbaik',
+    subtitle:
+      'Koleksi lengkap ring, pakan, dan peralatan berkualitas tinggi dari brand terpercaya untuk burung kesayangan Anda.',
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1624974553444-acf86b019000?q=80&w=1170&auto=format&fit=crop',
+    alt: 'Burung tropis yang indah',
+    title: 'Nutrisi Terbaik untuk Performa Optimal',
+    subtitle:
+      'Pakan bernutrisi lengkap dan suplemen khusus yang diformulasikan untuk meningkatkan kesehatan dan performa burung lomba.',
+  },
+];
 
 export const HomeHero = () => {
-  const heroImages = [
-    {
-      url: 'https://images.unsplash.com/photo-1555169062-013468b47731?q=80&w=1974&auto=format&fit=crop',
-      alt: 'Burung eksotis di habitat alami',
-      title: 'Ring Berkualitas untuk Sang Juara',
-      subtitle:
-        'Temukan ring burung premium, pakan bernutrisi, dan aksesoris terbaik yang dirancang untuk menunjang performa dan keindahan burung kesayangan Anda.',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1520808663317-647b476a81b9?q=80&w=1173&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      alt: 'Burung cantik dengan ring premium',
-      title: 'Aksesoris Premium untuk Burung Terbaik',
-      subtitle:
-        'Koleksi lengkap ring, pakan, dan peralatan berkualitas tinggi dari brand terpercaya untuk burung kesayangan Anda.',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1624974553444-acf86b019000?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      alt: 'Burung tropis yang indah',
-      title: 'Nutrisi Terbaik untuk Performa Optimal',
-      subtitle:
-        'Pakan bernutrisi lengkap dan suplemen khusus yang diformulasikan untuk meningkatkan kesehatan dan performa burung lomba.',
-    },
-  ];
-
+  const { featureImageList } = useSelector((state) => state.commonFeature);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  // Filter dynamic hero images
+  const dynamicHeroImages = featureImageList
+    ?.filter((img) => img.type === 'hero')
+    .map((img) => ({
+      url: img.image,
+      title: img.title || 'Ring Berkualitas untuk Sang Juara',
+      subtitle: img.subtitle || 'Koleksi lengkap ring dan pakan berkualitas tinggi.',
+      alt: img.title || 'Omahring Hero',
+    })) || [];
+
+  const heroImages = dynamicHeroImages.length > 0 ? dynamicHeroImages : defaultHeroImages;
+
   useEffect(() => {
+    if (heroImages.length <= 1) return;
     const interval = setInterval(() => {
       nextSlide();
     }, 5000);
     return () => clearInterval(interval);
-  }, [currentSlide]);
+  }, [currentSlide, heroImages.length]);
 
   const nextSlide = () => {
-    if (!isAnimating) {
+    if (!isAnimating && heroImages.length > 1) {
       setIsAnimating(true);
       setTimeout(() => {
         setCurrentSlide((prev) => (prev + 1) % heroImages.length);
@@ -48,7 +63,7 @@ export const HomeHero = () => {
   };
 
   const prevSlide = () => {
-    if (!isAnimating) {
+    if (!isAnimating && heroImages.length > 1) {
       setIsAnimating(true);
       setTimeout(() => {
         setCurrentSlide((prev) => (prev - 1 + heroImages.length) % heroImages.length);
@@ -56,6 +71,8 @@ export const HomeHero = () => {
       }, 300);
     }
   };
+
+  if (!heroImages || heroImages.length === 0) return null;
 
   return (
     <section className="relative h-[85vh] min-h-[600px] flex items-center text-white overflow-hidden">
@@ -75,20 +92,24 @@ export const HomeHero = () => {
         </div>
       ))}
 
-      <button
-        onClick={prevSlide}
-        className="absolute left-6 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 hover:scale-110"
-        disabled={isAnimating}
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
-      <button
-        onClick={nextSlide}
-        className="absolute right-6 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 hover:scale-110"
-        disabled={isAnimating}
-      >
-        <ChevronRight className="w-6 h-6" />
-      </button>
+      {heroImages.length > 1 && (
+        <>
+          <button
+            onClick={prevSlide}
+            className="absolute left-6 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 hover:scale-110"
+            disabled={isAnimating}
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-6 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 hover:scale-110"
+            disabled={isAnimating}
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
 
       <div className="container relative z-20 mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -107,12 +128,12 @@ export const HomeHero = () => {
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
               <span className="block text-white drop-shadow-lg">Omahring</span>
               <span className="block text-orange-400 text-2xl md:text-3xl lg:text-4xl font-medium mt-2">
-                {heroImages[currentSlide].title}
+                {heroImages[currentSlide]?.title}
               </span>
             </h1>
 
             <p className="text-lg md:text-xl text-gray-200 max-w-xl mb-8 leading-relaxed drop-shadow-sm">
-              {heroImages[currentSlide].subtitle}
+              {heroImages[currentSlide]?.subtitle}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -185,25 +206,27 @@ export const HomeHero = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex gap-3">
-        {heroImages.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => {
-              if (!isAnimating) {
-                setIsAnimating(true);
-                setTimeout(() => {
-                  setCurrentSlide(index);
-                  setIsAnimating(false);
-                }, 300);
-              }
-            }}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-              index === currentSlide ? 'bg-orange-400 w-8' : 'bg-white/40 hover:bg-white/60'
-            }`}
-          />
-        ))}
-      </div>
+      {heroImages.length > 1 && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex gap-3">
+          {heroImages.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                if (!isAnimating) {
+                  setIsAnimating(true);
+                  setTimeout(() => {
+                    setCurrentSlide(index);
+                    setIsAnimating(false);
+                  }, 300);
+                }
+              }}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                index === currentSlide ? 'bg-orange-400 w-8' : 'bg-white/40 hover:bg-white/60'
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 };

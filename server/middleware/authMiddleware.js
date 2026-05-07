@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User'); // Sesuaikan path ke model User Anda
+const supabase = require('../config/supabase');
 
 // =================================================================
 // Middleware: Autentikasi - Verifikasi JWT Token
@@ -27,10 +27,14 @@ const authenticate = async (req, res, next) => {
     // Verifikasi token - gunakan secret key yang sama dengan kode lama Anda
     const decoded = jwt.verify(token, 'CLIENT_SECRET_KEY');
 
-    // Cari user berdasarkan ID dari token
-    const user = await User.findById(decoded.id).select('-password');
+    // Cari user berdasarkan ID dari token menggunakan Supabase
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('id, email, userName, role')
+      .eq('id', decoded.id)
+      .maybeSingle();
 
-    if (!user) {
+    if (fetchError || !user) {
       return res.status(401).json({
         success: false,
         message: 'Unauthorised user!',
@@ -39,7 +43,8 @@ const authenticate = async (req, res, next) => {
 
     // Simpan data user ke request object dengan format yang konsisten
     req.user = {
-      id: user._id.toString(),
+      id: user.id,
+      _id: user.id, // Kompatibilitas dengan kode lama yang pakai _id
       email: user.email,
       userName: user.userName,
       role: user.role,
