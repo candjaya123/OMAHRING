@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { useTranslation } from 'react-i18next';
+
 const initialState = {
   userName: '',
   email: '',
@@ -16,6 +18,7 @@ const initialState = {
 };
 
 function AuthRegister() {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState(initialState);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -28,7 +31,7 @@ function AuthRegister() {
         toast.toastSuccess('Sukses', 'Anda berhasil mendaftarkan akun');
         navigate('/auth/login');
       } else {
-        toast.toastSuccess('Gagal', 'Coba mendaftar lagi');
+        toast.toastError('Gagal', data?.payload?.message || 'Coba mendaftar lagi');
       }
     });
   }
@@ -36,24 +39,24 @@ function AuthRegister() {
   return (
     <div className="mx-auto w-full max-w-md space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Create new account</h1>
-        <p className="mt-2">
-          Already have an account
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">{t('auth.register')}</h1>
+        <p className="mt-2 text-gray-500">
+          {t('auth.already_have_account')}
           <Link
-            className="font-medium ml-2 text-primary hover:text-orange-500 hover:underline transition-colors duration-300"
+            className="font-medium ml-2 text-orange-600 hover:text-orange-500 hover:underline transition-colors duration-300"
             to="/auth/login"
           >
-            Login
+            {t('auth.login')}
           </Link>
         </p>
       </div>
       <CommonForm
         formControls={registerFormControls}
-        buttonText={'Sign Up'}
+        buttonText={t('auth.register')}
         formData={formData}
         setFormData={setFormData}
         onSubmit={onSubmit}
-        buttonClassName="text-gray-800 text-white hover:bg-orange-500 hover:text-white transition-colors duration-300"
+        buttonClassName="w-full bg-orange-600 hover:bg-orange-700 text-white transition-colors duration-300 rounded-xl h-12"
       />
     </div>
   );

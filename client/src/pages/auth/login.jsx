@@ -7,12 +7,15 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { useTranslation } from 'react-i18next';
+
 const initialState = {
   email: '',
   password: '',
 };
 
 function AuthLogin() {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState(initialState);
   const dispatch = useDispatch();
   const toast = useToast();
@@ -66,25 +69,25 @@ function AuthLogin() {
     <div className="mx-auto w-full max-w-md space-y-6">
       <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Sign in to your account
+          {t('auth.login')}
         </h1>
-        <p className="mt-2">
-          Don&apos;t have an account
+        <p className="mt-2 text-gray-500">
+          {t('auth.dont_have_account')}
           <Link
-            className="font-medium ml-2 text-primary hover:text-orange-500 hover:underline transition-colors duration-300"
+            className="font-medium ml-2 text-orange-600 hover:text-orange-500 hover:underline transition-colors duration-300"
             to="/auth/register"
           >
-            Register
+            {t('auth.register')}
           </Link>
         </p>
       </div>
       <CommonForm
         formControls={loginFormControls}
-        buttonText="Sign In"
+        buttonText={t('auth.login')}
         formData={formData}
         setFormData={setFormData}
         onSubmit={onSubmit}
-        buttonClassName="text-gray-800 text-white hover:bg-orange-500 hover:text-white transition-colors duration-300"
+        buttonClassName="w-full bg-orange-600 hover:bg-orange-700 text-white transition-colors duration-300 rounded-xl h-12"
       />
     </div>
   );

@@ -2,7 +2,7 @@ const supabase = require("../../config/supabase");
 
 const addArticle = async (req, res) => {
   try {
-    const { title, content, excerpt, category, image, status, author_id } = req.body;
+    const { title, content, excerpt, category, image, status } = req.body;
 
     const { data: newArticle, error } = await supabase
       .from('articles')
@@ -13,7 +13,7 @@ const addArticle = async (req, res) => {
         category,
         image,
         status: status || 'draft',
-        author_id,
+        author_id: req.user.id,
       })
       .select()
       .single();
@@ -60,6 +60,19 @@ const editArticle = async (req, res) => {
     const { id } = req.params;
     const { title, content, excerpt, category, image, status } = req.body;
 
+    // Verify ownership for members
+    if (req.user.role === 'member') {
+      const { data: existingArticle, error: fetchError } = await supabase
+        .from('articles')
+        .select('author_id')
+        .eq('id', id)
+        .single();
+        
+      if (fetchError || !existingArticle || existingArticle.author_id !== req.user.id) {
+        return res.status(403).json({ success: false, message: "Akses ditolak. Anda bukan penulis artikel ini." });
+      }
+    }
+
     const { data: updatedArticle, error } = await supabase
       .from('articles')
       .update({
@@ -94,6 +107,19 @@ const deleteArticle = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Verify ownership for members
+    if (req.user.role === 'member') {
+      const { data: existingArticle, error: fetchError } = await supabase
+        .from('articles')
+        .select('author_id')
+        .eq('id', id)
+        .single();
+        
+      if (fetchError || !existingArticle || existingArticle.author_id !== req.user.id) {
+        return res.status(403).json({ success: false, message: "Akses ditolak. Anda bukan penulis artikel ini." });
+      }
+    }
+
     const { error } = await supabase
       .from('articles')
       .delete()
@@ -114,9 +140,33 @@ const deleteArticle = async (req, res) => {
   }
 };
 
+const fetchMemberArticles = async (req, res) => {
+  try {
+    const { data: articles, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('author_id', req.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      data: articles.map(article => ({ ...article, _id: article.id })),
+    });
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil daftar artikel",
+    });
+  }
+};
+
 module.exports = {
   addArticle,
   fetchAllArticles,
+  fetchMemberArticles,
   editArticle,
   deleteArticle,
 };

@@ -28,6 +28,7 @@ import BlogPage from './pages/shopping-view/blog';
 import MembershipPage from './pages/shopping-view/membership'; // 🔹 1. Impor halaman baru
 import AdminArticles from './pages/admin-view/articles'; // 🔹 Impor halaman artikel
 import MemberDashboard from './pages/member-view/dashboard';
+import MemberArticles from './pages/member-view/articles'; // 🔹 Impor halaman artikel member
 import AdminReportsView from './pages/admin-view/reports'; // 🔹 1. Impor halaman laporan
 import AdminManagementView from './pages/admin-view/manage-admins'; // 🔹 1. Impor halaman baru
 import ProductDetailPage from './pages/shopping-view/product-detail';
@@ -37,6 +38,7 @@ import { ToastContainer } from 'react-toastify';
 import BirdProfile from './pages/bird-profile';
 
 import AdminChatLogs from './pages/admin-view/chat-logs';
+import AdminChat from './pages/admin-view/chat';
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
@@ -107,6 +109,7 @@ function App() {
           {/* 🔹 2. Tambahkan rute baru di sini */}
           <Route path="features" element={<AdminFeatures />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="chat" element={<AdminChat />} />
           <Route path="chat-logs" element={<AdminChatLogs />} />
         </Route>
 
@@ -120,6 +123,7 @@ function App() {
           }
         >
           <Route path="dashboard" element={<MemberDashboard />} />
+          <Route path="articles" element={<MemberArticles />} />
         </Route>
 
         {/* shop → bebas login */}

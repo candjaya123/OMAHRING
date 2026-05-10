@@ -1,25 +1,72 @@
 {
+  "nav": {
+    "home": "Home",
+    "shop": "Shop",
+    "information": "Information",
+    "membership": "Membership",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "account": "Account",
+    "dashboard": "Dashboard"
+  },
   "hero": {
     "title": "Omahring – Make your champion bird your pride",
-    "subtitle": "Exclusive rings increase the value and identity of your bird."
+    "subtitle": "Exclusive rings increase the value and identity of your bird.",
+    "cta": "View Products"
   },
   "sections": {
     "products": "Our Products",
     "bird_champion": "Champion Bird Info",
     "membership": "Membership",
-    "education": "Education & Info"
+    "education": "Education & Info",
+    "featured_products": "Our Featured Products"
   },
-  "membership": {
-    "benefits": "Member Benefits",
-    "discount": "Special Discount",
-    "register": "Register Breeder/Bird",
-    "branding": "Branding Exposure",
-    "barcode": "Barcode for Bird Identity"
+  "product": {
+    "add_to_cart": "Add to Cart",
+    "view_detail": "View Detail",
+    "see_all": "View All Products",
+    "no_product": "No products available at the moment.",
+    "categories": "Categories",
+    "sort_by": "Sort By",
+    "price_low_to_high": "Price: Low to High",
+    "price_high_to_low": "Price: High to Low"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "shipping_address": "Shipping Address",
+    "payment_method": "Payment Method",
+    "order_summary": "Order Summary",
+    "total": "Grand Total",
+    "place_order": "Place Order",
+    "success_title": "Payment Successful!",
+    "success_message": "Thank you for your order."
   },
   "auth": {
     "nik": "ID Number (NIK)",
     "phone": "Phone Number",
     "register": "Register",
-    "login": "Login"
+    "login": "Login",
+    "email": "Email",
+    "password": "Password",
+    "name": "Full Name",
+    "already_have_account": "Already have an account?",
+    "dont_have_account": "Don't have an account?"
+  },
+  "chat": {
+    "title": "Omahring Support",
+    "placeholder": "Type your message...",
+    "send": "Send",
+    "online": "Online",
+    "closed": "Session closed",
+    "no_messages": "No messages yet."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "read_more": "READ MORE"
   }
 }

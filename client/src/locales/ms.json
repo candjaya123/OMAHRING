@@ -1,25 +1,72 @@
 {
+  "nav": {
+    "home": "Laman Utama",
+    "shop": "Kedai",
+    "information": "Maklumat",
+    "membership": "Keahlian",
+    "login": "Log Masuk",
+    "register": "Daftar",
+    "logout": "Log Keluar",
+    "account": "Akaun",
+    "dashboard": "Papan Pemuka"
+  },
   "hero": {
     "title": "Omahring – Jadikan burung juara anda sebagai kebanggaan",
-    "subtitle": "Ring eksklusif meningkatkan nilai dan identiti burung anda."
+    "subtitle": "Ring eksklusif meningkatkan nilai dan identiti burung anda.",
+    "cta": "Lihat Produk"
   },
   "sections": {
     "products": "Produk Kami",
     "bird_champion": "Info Burung Juara",
     "membership": "Keahlian",
-    "education": "Pendidikan & Info"
+    "education": "Pendidikan & Info",
+    "featured_products": "Produk Pilihan Kami"
   },
-  "membership": {
-    "benefits": "Kelebihan Ahli",
-    "discount": "Diskaun Khas",
-    "register": "Daftar Pembiak/Burung",
-    "branding": "Pendedahan Penjenamaan",
-    "barcode": "Barcode untuk Identiti Burung"
+  "product": {
+    "add_to_cart": "Tambah ke Troli",
+    "view_detail": "Lihat Butiran",
+    "see_all": "Lihat Semua Produk",
+    "no_product": "Tiada produk tersedia buat masa ini.",
+    "categories": "Kategori",
+    "sort_by": "Susun Mengikut",
+    "price_low_to_high": "Harga: Rendah ke Tinggi",
+    "price_high_to_low": "Harga: Tinggi ke Rendah"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "shipping_address": "Alamat Penghantaran",
+    "payment_method": "Kaedah Pembayaran",
+    "order_summary": "Ringkasan Pesanan",
+    "total": "Jumlah Keseluruhan",
+    "place_order": "Buat Pesanan",
+    "success_title": "Pembayaran Berjaya!",
+    "success_message": "Terima kasih atas pesanan anda."
   },
   "auth": {
     "nik": "Nombor KPP (NIK)",
     "phone": "No Telefon",
     "register": "Daftar",
-    "login": "Log Masuk"
+    "login": "Log Masuk",
+    "email": "Emel",
+    "password": "Kata Laluan",
+    "name": "Nama Penuh",
+    "already_have_account": "Sudah mempunyai akaun?",
+    "dont_have_account": "Belum mempunyai akaun?"
+  },
+  "chat": {
+    "title": "Omahring Support",
+    "placeholder": "Tulis mesej anda...",
+    "send": "Hantar",
+    "online": "Atas Talian",
+    "closed": "Sesi ditutup",
+    "no_messages": "Tiada mesej lagi."
+  },
+  "common": {
+    "loading": "Memuatkan...",
+    "error": "Berlaku kesilapan",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Padam",
+    "read_more": "BACA LENGKAP"
   }
 }

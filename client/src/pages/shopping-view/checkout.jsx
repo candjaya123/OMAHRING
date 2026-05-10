@@ -24,8 +24,10 @@ import {
 } from '@/components/ui/dialog';
 import { formatPrice } from '@/utils/currencyFormatters';
 import useToast from '@/hooks/useToast';
+import { useTranslation } from 'react-i18next';
 
 function ShoppingCheckout() {
+  const { t } = useTranslation();
   const { cartItems } = useSelector((state) => state.shopCart);
   const { user } = useSelector((state) => state.auth);
   const { isLoading, orderDetails } = useSelector((state) => state.shopOrder);
@@ -37,14 +39,15 @@ function ShoppingCheckout() {
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [useNewAddress, setUseNewAddress] = useState(true);
   
-  const [provinces, setProvinces] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [storeSettings, setStoreSettings] = useState({ storeServiceFee: 0 });
+  const [areaSearchQuery, setAreaSearchQuery] = useState('');
+  const [areaOptions, setAreaOptions] = useState([]);
+  const [isSearchingArea, setIsSearchingArea] = useState(false);
+  const [showAreaDropdown, setShowAreaDropdown] = useState(false);
+  const [storeSettings, setStoreSettings] = useState({ storeServiceFee: 0, originAreaId: '' });
 
   const [newAddressData, setNewAddressData] = useState({
     address: '',
-    province: '', 
-    city: '', 
+    area: '', 
     pincode: '',
     phone: '',
     notes: '',
@@ -54,8 +57,7 @@ function ShoppingCheckout() {
     name: '',
     email: '',
     address: '',
-    province: '',
-    city: '',
+    area: '', 
     pincode: '',
     phone: '',
     notes: '',
@@ -76,7 +78,6 @@ function ShoppingCheckout() {
     if (user?.id) {
       dispatch(fetchAllAddresses(user.id));
     }
-    fetchProvinces();
     fetchStoreSettings();
   }, [dispatch, user]);
 
@@ -90,35 +91,50 @@ function ShoppingCheckout() {
 
   const fetchStoreSettings = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/settings`);
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/admin/settings`);
       const result = await res.json();
       if (result.success && result.data) {
-        setStoreSettings({ storeServiceFee: parseInt(result.data.storeServiceFee) || 0 });
+        setStoreSettings({ storeServiceFee: parseInt(result.data.storeServiceFee) || 0, originAreaId: result.data.originAreaId });
       }
     } catch (error) {
       console.error(error);
     }
   }
 
-  const fetchProvinces = async () => {
+  const handleAreaSearch = async (e) => {
+    const query = e.target.value;
+    setAreaSearchQuery(query);
+    
+    if (query.length < 3) {
+      setAreaOptions([]);
+      setShowAreaDropdown(false);
+      return;
+    }
+    
+    setIsSearchingArea(true);
+    setShowAreaDropdown(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/provinces`);
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/shop/shipping/areas?input=${query}`);
       const data = await res.json();
-      if (data.success) setProvinces(data.data);
+      if (data.success) {
+        setAreaOptions(data.data);
+      }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSearchingArea(false);
     }
   };
 
-  const fetchCities = async (provinceId) => {
-    if (!provinceId) return;
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/cities/${provinceId}`);
-      const data = await res.json();
-      if (data.success) setCities(data.data);
-    } catch (e) {
-      console.error(e);
+  const handleSelectArea = (area, isGuest) => {
+    const areaValue = `${area.id}||${area.name}`;
+    if (isGuest) {
+      setGuestInfo(prev => ({ ...prev, area: areaValue }));
+    } else {
+      setNewAddressData(prev => ({ ...prev, area: areaValue }));
     }
+    setAreaSearchQuery(area.name);
+    setShowAreaDropdown(false);
   };
 
   const handleGuestInfoChange = (e) => {
@@ -131,48 +147,23 @@ function ShoppingCheckout() {
     setNewAddressData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleProvinceChange = (e, isGuest) => {
-    const provId = e.target.value;
-    const selectedProv = provinces.find(p => p.province_id === provId);
-    const provValue = selectedProv ? `${provId}::${selectedProv.province}` : "";
-    
-    if (isGuest) {
-      setGuestInfo(prev => ({ ...prev, province: provValue, city: "" }));
-    } else {
-      setNewAddressData(prev => ({ ...prev, province: provValue, city: "" }));
-    }
-    fetchCities(provId);
-  };
-
-  const handleCityChange = (e, isGuest) => {
-    const cityId = e.target.value;
-    const selectedCity = cities.find(c => c.city_id === cityId);
-    const cityValue = selectedCity ? `${cityId}::${selectedCity.type} ${selectedCity.city_name}` : "";
-    
-    if (isGuest) {
-      setGuestInfo(prev => ({ ...prev, city: cityValue }));
-    } else {
-      setNewAddressData(prev => ({ ...prev, city: cityValue }));
-    }
-  };
-
   // Automatically recalculate shipping when destination changes
   useEffect(() => {
     let destId = null;
     if (!user) {
-      destId = guestInfo.city?.split('::')[0];
+      destId = guestInfo.area?.split('||')[0];
     } else {
       if (useNewAddress) {
-        destId = newAddressData.city?.split('::')[0];
+        destId = newAddressData.area?.split('||')[0];
       } else if (selectedAddressId) {
         const addr = addressList.find(a => a._id === selectedAddressId);
         if (addr) {
-          destId = addr.city?.split('||')[0]?.split('::')[0];
+          destId = addr.city?.split('||')[0];
         }
       }
     }
 
-    if (destId && cartItems?.items?.length > 0 && storeSettings.originCityId) {
+    if (destId && cartItems?.items?.length > 0 && storeSettings.originAreaId) {
       const totalWeight = cartItems.items.reduce((acc, item) => {
         return acc + (item.shipping?.weight || 1000) * item.quantity;
       }, 0);
@@ -182,7 +173,7 @@ function ShoppingCheckout() {
       setShippingOptions([]);
       setSelectedShipping(null);
     }
-  }, [guestInfo.city, newAddressData.city, selectedAddressId, useNewAddress, selectedCourier, user, cartItems, addressList, storeSettings.originCityId]);
+  }, [guestInfo.area, newAddressData.area, selectedAddressId, useNewAddress, selectedCourier, user, cartItems, addressList, storeSettings.originAreaId]);
 
   const fetchShippingCost = async (destinationId, weight, courier) => {
     setIsCalculatingShipping(true);
@@ -190,7 +181,7 @@ function ShoppingCheckout() {
     setSelectedShipping(null);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/cost`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/shop/shipping/cost`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ destination: destinationId, weight, courier })
@@ -213,12 +204,12 @@ function ShoppingCheckout() {
 
   const validateGuestInfo = () => {
     const newErrors = {};
-    const { name, email, address, city, pincode, phone } = guestInfo;
+    const { name, email, address, area, pincode, phone } = guestInfo;
 
     if (!name) newErrors.name = 'Nama lengkap wajib diisi.';
     if (!email) newErrors.email = 'Email wajib diisi.';
     if (!address) newErrors.address = 'Alamat lengkap wajib diisi.';
-    if (!city) newErrors.city = 'Kota wajib diisi.';
+    if (!area) newErrors.area = 'Area tujuan wajib dipilih.';
     if (!pincode) newErrors.pincode = 'Kode pos wajib diisi.';
     if (!phone) newErrors.phone = 'Nomor telepon wajib diisi.';
 
@@ -232,8 +223,8 @@ function ShoppingCheckout() {
 
   const validateUserAddress = () => {
     if (useNewAddress) {
-      const { address, city, pincode, phone } = newAddressData;
-      return address && city && pincode && phone;
+      const { address, area, pincode, phone } = newAddressData;
+      return address && area && pincode && phone;
     }
     return selectedAddressId;
   };
@@ -295,7 +286,7 @@ function ShoppingCheckout() {
     if (!user) {
       addressInfo = {
         address: guestInfo.address,
-        city: `${guestInfo.city}||${guestInfo.province}`,
+        city: guestInfo.area,
         pincode: guestInfo.pincode,
         phone: guestInfo.phone,
         notes: guestInfo.notes,
@@ -306,7 +297,7 @@ function ShoppingCheckout() {
       if (useNewAddress) {
         addressInfo = {
           address: newAddressData.address,
-          city: `${newAddressData.city}||${newAddressData.province}`,
+          city: newAddressData.area,
           pincode: newAddressData.pincode,
           phone: newAddressData.phone,
           notes: newAddressData.notes,
@@ -337,7 +328,7 @@ function ShoppingCheckout() {
         variantName: item.variant.name,
       })),
       addressInfo,
-      totalAmount: grandTotal, // expected check in backend
+      totalAmount: grandTotal, 
       shippingCost: shippingCostValue,
       paymentCategory: paymentCategory,
       customerName,
@@ -361,9 +352,8 @@ function ShoppingCheckout() {
   if (!cartItems?.items?.length) {
     return (
       <div className="p-8 text-center">
-        <h2 className="text-2xl font-bold mb-4">Keranjang Kosong</h2>
-        <p className="text-gray-600 mb-4">Tambahkan produk ke keranjang terlebih dahulu</p>
-        <Button onClick={() => navigate('/shop/listing')}>Mulai Belanja</Button>
+        <h2 className="text-2xl font-bold mb-4">{t('checkout.no_product')}</h2>
+        <Button onClick={() => navigate('/shop/listing')}>{t('product.see_all')}</Button>
       </div>
     );
   }
@@ -373,7 +363,7 @@ function ShoppingCheckout() {
       <div className="relative h-[200px] md:h-[300px] w-full overflow-hidden rounded-lg mb-8">
         <img src={img} className="h-full w-full object-cover object-center" alt="Checkout banner" />
         <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-          <h1 className="text-white text-3xl md:text-5xl font-bold">Checkout</h1>
+          <h1 className="text-white text-3xl md:text-5xl font-bold">{t('checkout.title')}</h1>
         </div>
       </div>
 
@@ -382,7 +372,7 @@ function ShoppingCheckout() {
         <div className="space-y-6">
           <div className="flex items-center gap-2 mb-4">
             <MapPin className="w-6 h-6 text-orange-500" />
-            <h2 className="text-2xl font-bold">Alamat Pengiriman</h2>
+            <h2 className="text-2xl font-bold">{t('checkout.shipping_address')}</h2>
           </div>
 
           {!user ? (
@@ -391,54 +381,63 @@ function ShoppingCheckout() {
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <User className="w-5 h-5 text-gray-500" />
-                  <h3 className="text-lg font-semibold">Informasi Pembeli</h3>
+                  <h3 className="text-lg font-semibold">{t('auth.name')}</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="name">Nama Lengkap *</Label>
+                    <Label htmlFor="name">{t('auth.name')} *</Label>
                     <Input id="name" name="name" value={guestInfo.name} onChange={handleGuestInfoChange} required className={errors.name ? 'border-red-500' : ''} />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email *</Label>
+                    <Label htmlFor="email">{t('auth.email')} *</Label>
                     <Input id="email" name="email" type="email" value={guestInfo.email} onChange={handleGuestInfoChange} required className={errors.email ? 'border-red-500' : ''} />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="address">Alamat Lengkap *</Label>
+                  <Label htmlFor="address">{t('checkout.shipping_address')} *</Label>
                   <Textarea id="address" name="address" value={guestInfo.address} onChange={handleGuestInfoChange} required className={errors.address ? 'border-red-500' : ''} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Provinsi *</Label>
-                    <select 
-                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                      onChange={(e) => handleProvinceChange(e, true)}
-                      value={guestInfo.province.split('::')[0] || ""}
-                    >
-                      <option value="">Pilih Provinsi</option>
-                      {provinces.map(p => <option key={p.province_id} value={p.province_id}>{p.province}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <Label>Kota / Kabupaten *</Label>
-                    <select 
-                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                      onChange={(e) => handleCityChange(e, true)}
-                      value={guestInfo.city.split('::')[0] || ""}
-                      disabled={!guestInfo.province}
-                    >
-                      <option value="">Pilih Kota</option>
-                      {cities.map(c => <option key={c.city_id} value={c.city_id}>{c.type} {c.city_name}</option>)}
-                    </select>
-                  </div>
+                <div className="relative">
+                  <Label>Kecamatan / Kelurahan / Kode Pos *</Label>
+                  <Input 
+                    placeholder="Ketik minimal 3 huruf..." 
+                    value={areaSearchQuery} 
+                    onChange={handleAreaSearch}
+                    onFocus={() => { if(areaOptions.length > 0) setShowAreaDropdown(true); }}
+                    className={errors.area ? 'border-red-500' : ''}
+                  />
+                  {showAreaDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {isSearchingArea ? (
+                        <div className="p-3 text-sm text-gray-500">Mencari...</div>
+                      ) : areaOptions.length > 0 ? (
+                        areaOptions.map(area => (
+                          <div 
+                            key={area.id} 
+                            className="p-3 text-sm cursor-pointer hover:bg-orange-50 border-b last:border-0"
+                            onClick={() => handleSelectArea(area, true)}
+                          >
+                            {area.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3 text-sm text-gray-500">Tidak ditemukan</div>
+                      )}
+                    </div>
+                  )}
+                  {guestInfo.area && !showAreaDropdown && (
+                    <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> Area terpilih: {guestInfo.area.split('||')[1]}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="phone">Nomor Telepon *</Label>
+                    <Label htmlFor="phone">{t('auth.phone')} *</Label>
                     <Input id="phone" name="phone" value={guestInfo.phone} onChange={handleGuestInfoChange} required className={errors.phone ? 'border-red-500' : ''} />
                   </div>
                   <div>
@@ -517,34 +516,42 @@ function ShoppingCheckout() {
                           <Label>Alamat Lengkap *</Label>
                           <Textarea name="address" value={newAddressData.address} onChange={handleNewAddressChange} required />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Provinsi *</Label>
-                            <select 
-                              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                              onChange={(e) => handleProvinceChange(e, false)}
-                              value={newAddressData.province.split('::')[0] || ""}
-                            >
-                              <option value="">Pilih Provinsi</option>
-                              {provinces.map(p => <option key={p.province_id} value={p.province_id}>{p.province}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <Label>Kota / Kabupaten *</Label>
-                            <select 
-                              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                              onChange={(e) => handleCityChange(e, false)}
-                              value={newAddressData.city.split('::')[0] || ""}
-                              disabled={!newAddressData.province}
-                            >
-                              <option value="">Pilih Kota</option>
-                              {cities.map(c => <option key={c.city_id} value={c.city_id}>{c.type} {c.city_name}</option>)}
-                            </select>
-                          </div>
+                        <div className="relative">
+                          <Label>Kecamatan / Kelurahan / Kode Pos *</Label>
+                          <Input 
+                            placeholder="Ketik minimal 3 huruf..." 
+                            value={areaSearchQuery} 
+                            onChange={handleAreaSearch}
+                            onFocus={() => { if(areaOptions.length > 0) setShowAreaDropdown(true); }}
+                          />
+                          {showAreaDropdown && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                              {isSearchingArea ? (
+                                <div className="p-3 text-sm text-gray-500">Mencari...</div>
+                              ) : areaOptions.length > 0 ? (
+                                areaOptions.map(area => (
+                                  <div 
+                                    key={area.id} 
+                                    className="p-3 text-sm cursor-pointer hover:bg-orange-50 border-b last:border-0"
+                                    onClick={() => handleSelectArea(area, false)}
+                                  >
+                                    {area.name}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-3 text-sm text-gray-500">Tidak ditemukan</div>
+                              )}
+                            </div>
+                          )}
+                          {newAddressData.area && !showAreaDropdown && (
+                            <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> Area terpilih: {newAddressData.area.split('||')[1]}
+                            </div>
+                          )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label>Nomor Telepon *</Label>
+                            <Label>{t('auth.phone')} *</Label>
                             <Input name="phone" value={newAddressData.phone} onChange={handleNewAddressChange} required />
                           </div>
                           <div>
@@ -635,7 +642,7 @@ function ShoppingCheckout() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <CreditCard className="w-6 h-6 text-orange-500" />
-                  <h2 className="text-xl font-bold">Pilih Metode Pembayaran</h2>
+                  <h2 className="text-xl font-bold">{t('checkout.payment_method')}</h2>
                 </div>
                 
                 <RadioGroup 
@@ -707,7 +714,7 @@ function ShoppingCheckout() {
         <div>
           <Card className="sticky top-4">
             <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Ringkasan Pesanan</h2>
+              <h2 className="text-2xl font-bold mb-4">{t('checkout.order_summary')}</h2>
 
               <div className="space-y-3 mb-4">
                 {cartItems?.items?.map((item) => (
@@ -718,7 +725,7 @@ function ShoppingCheckout() {
                     </div>
                     <div className="text-right">
                       <div className="font-medium">
-                        {(item.variant.salePrice > 0 ? item.variant.salePrice : item.variant.price) * item.quantity}
+                        {formatPrice((item.variant.salePrice > 0 ? item.variant.salePrice : item.variant.price) * item.quantity)}
                       </div>
                     </div>
                   </div>
@@ -749,7 +756,7 @@ function ShoppingCheckout() {
               </div>
 
               <div className="flex justify-between font-bold text-xl my-4">
-                <span>Total Pembayaran</span>
+                <span>{t('checkout.total')}</span>
                 <span className="text-orange-600">{formatPrice(grandTotal)}</span>
               </div>
 
@@ -759,7 +766,7 @@ function ShoppingCheckout() {
                     className="w-full bg-orange-500 hover:bg-orange-600 text-lg py-6 rounded-lg shadow-md transition-all"
                     disabled={isLoading || !selectedShipping || !paymentCategory}
                   >
-                    {isLoading ? 'Memproses...' : 'Bayar Sekarang'}
+                    {isLoading ? t('common.loading') : t('checkout.place_order')}
                   </Button>
                 </DialogTrigger>
 
@@ -770,27 +777,27 @@ function ShoppingCheckout() {
                       Konfirmasi Pesanan Anda
                     </DialogTitle>
                     <DialogDescription className="pt-1 text-gray-500">
-                      Harap periksa kembali detail pesanan Anda sebelum melanjutkan ke pembayaran. Midtrans akan memproses transaksi Anda dengan gerbang pembayaran yang dipilih.
+                      Harap periksa kembali detail pesanan Anda sebelum melanjutkan ke pembayaran.
                     </DialogDescription>
                   </DialogHeader>
 
                   <div className="px-6 space-y-4">
-                    <div className="flex justify-between items-center font-semibold text-lg">
-                      <span>Total Pembayaran</span>
+                    <div className="flex justify-between items-center font-semibold text-lg py-4">
+                      <span>{t('checkout.total')}</span>
                       <span className="text-orange-600">{formatPrice(grandTotal)}</span>
                     </div>
                   </div>
 
                   <DialogFooter className="bg-gray-50 px-6 py-4 rounded-b-xl flex flex-col sm:flex-row sm:justify-end gap-3">
                     <DialogClose asChild>
-                      <Button variant="outline" className="w-full sm:w-auto">Batal</Button>
+                      <Button variant="outline" className="w-full sm:w-auto">{t('common.cancel')}</Button>
                     </DialogClose>
                     <Button
                       onClick={handleCheckout}
                       className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white"
                       disabled={isLoading}
                     >
-                      {isLoading ? 'Memproses...' : 'Lanjutkan Pembayaran'}
+                      {isLoading ? t('common.loading') : t('checkout.place_order')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import axios from "axios";
+import api from "../../utils/axios";
 
 const initialState = {
   isLoading: false,
@@ -10,8 +10,8 @@ const initialState = {
 export const registerBird = createAsyncThunk(
   "/birds/registerBird",
   async (formData) => {
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/shop/birds/register`,
+    const response = await api.post(
+      `/shop/birds/register`,
       formData
     );
     return response.data;
@@ -21,8 +21,8 @@ export const registerBird = createAsyncThunk(
 export const getBirdDetails = createAsyncThunk(
   "/birds/getBirdDetails",
   async (id) => {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/shop/birds/${id}`
+    const response = await api.get(
+      `/shop/birds/${id}`
     );
     return response.data;
   }
@@ -31,8 +31,8 @@ export const getBirdDetails = createAsyncThunk(
 export const getMemberBirds = createAsyncThunk(
   "/birds/getMemberBirds",
   async (memberId) => {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/shop/birds/member/${memberId}`
+    const response = await api.get(
+      `/shop/birds/member/${memberId}`
     );
     return response.data;
   }

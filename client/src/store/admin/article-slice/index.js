@@ -38,6 +38,14 @@ export const deleteArticle = createAsyncThunk(
   }
 );
 
+export const fetchMemberArticles = createAsyncThunk(
+  "/admin/fetchMemberArticles",
+  async () => {
+    const response = await api.get("/admin/articles/get-member");
+    return response.data;
+  }
+);
+
 const adminArticleSlice = createSlice({
   name: "adminArticle",
   initialState,
@@ -52,6 +60,17 @@ const adminArticleSlice = createSlice({
         state.articleList = action.payload.data;
       })
       .addCase(fetchAllArticles.rejected, (state) => {
+        state.isLoading = false;
+        state.articleList = [];
+      })
+      .addCase(fetchMemberArticles.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchMemberArticles.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.articleList = action.payload.data;
+      })
+      .addCase(fetchMemberArticles.rejected, (state) => {
         state.isLoading = false;
         state.articleList = [];
       });

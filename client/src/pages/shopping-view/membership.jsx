@@ -6,29 +6,21 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { CheckCircle, PartyPopper } from "lucide-react";
 
-// Di aplikasi nyata, Anda akan menggunakan Redux thunks di sini
-// const dispatch = useDispatch();
-// dispatch(checkEmailExists(email));
+import api from "@/utils/axios";
 
-// Fungsi mock untuk simulasi interaksi backend
-const mockApi = {
+// Fungsi untuk interaksi backend nyata
+const realApi = {
   checkEmail: async (email) => {
-    console.log(`Mengecek email: ${email}`);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (email === "sudahada@example.com") {
-      return { exists: true, message: "Email sudah terdaftar." };
-    }
-    return { exists: false };
+    const response = await api.get(`/auth/check-email/${email}`);
+    return response.data;
   },
   upgradeToMember: async (email) => {
-    console.log(`Mengubah peran untuk ${email} menjadi member.`);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return { success: true, message: "Selamat! Akun Anda berhasil di-upgrade menjadi member." };
+    const response = await api.put("/auth/upgrade-to-member", { email });
+    return response.data;
   },
   registerAsMember: async (userData) => {
-    console.log("Mendaftarkan member baru:", userData);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    return { success: true, message: "Selamat datang! Akun member Anda berhasil dibuat." };
+    const response = await api.post("/auth/register", { ...userData, role: 'member' });
+    return response.data;
   },
 };
 
@@ -48,10 +40,10 @@ function MembershipPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const result = await mockApi.checkEmail(email);
+      const result = await realApi.checkEmail(email);
       if (result.exists) {
         // Jika user ada, langsung upgrade
-        const upgradeResult = await mockApi.upgradeToMember(email);
+        const upgradeResult = await realApi.upgradeToMember(email);
         if (upgradeResult.success) {
           setSuccessMessage(upgradeResult.message);
           setStep('success');
@@ -76,7 +68,7 @@ function MembershipPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const result = await mockApi.registerAsMember({ email, ...formData });
+      const result = await realApi.registerAsMember({ email, ...formData });
       if (result.success) {
         setSuccessMessage(result.message);
         setStep('success');

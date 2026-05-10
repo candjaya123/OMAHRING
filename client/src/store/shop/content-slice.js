@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import axios from "axios";
+import api from "../../utils/axios";
 
 const initialState = {
   isLoading: false,
@@ -9,8 +9,8 @@ const initialState = {
 export const submitContent = createAsyncThunk(
   "/content/submitContent",
   async (formData) => {
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/shop/common/submit-content`,
+    const response = await api.post(
+      `/shop/common/submit-content`,
       formData
     );
     return response.data;

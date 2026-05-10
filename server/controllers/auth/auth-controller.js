@@ -182,4 +182,51 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-module.exports = { registerUser, loginUser, logoutUser, authMiddleware };
+// Check if email exists
+const checkEmailExists = async (req, res) => {
+  const { email } = req.params;
+  try {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email, role')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (user) {
+      return res.status(200).json({ success: true, exists: true, user });
+    } else {
+      return res.status(200).json({ success: true, exists: false });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ success: false, message: 'Error checking email' });
+  }
+};
+
+// Upgrade user to member
+const upgradeToMember = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const { data: updatedUser, error } = await supabase
+      .from('users')
+      .update({ role: 'member' })
+      .eq('email', email)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Akun berhasil di-upgrade menjadi member!',
+      user: updatedUser,
+    });
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ success: false, message: 'Gagal meng-upgrade akun' });
+  }
+};
+
+module.exports = { registerUser, loginUser, logoutUser, authMiddleware, checkEmailExists, upgradeToMember };

@@ -103,7 +103,7 @@ function ShoppingHome() {
                 {t('sections.products')}
              </div>
              <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 tracking-tight">
-               Produk Pilihan Kami
+               {t('sections.featured_products')}
              </h2>
           </div>
 
@@ -124,7 +124,7 @@ function ShoppingHome() {
                 ))
             ) : (
               <div className="col-span-full text-center py-20 bg-white/50 rounded-3xl border border-dashed border-gray-200">
-                <p className="text-gray-400 italic">Tidak ada produk tersedia saat ini.</p>
+                <p className="text-gray-400 italic">{t('product.no_product')}</p>
               </div>
             )}
           </motion.div>
@@ -134,7 +134,7 @@ function ShoppingHome() {
               onClick={() => navigate(`/shop/listing`)}
               className="bg-gray-900 hover:bg-black text-white text-lg px-12 py-7 h-auto rounded-2xl shadow-2xl shadow-gray-200 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 font-bold"
             >
-              Lihat Semua Produk
+              {t('product.see_all')}
             </Button>
           </div>
         </div>
@@ -261,7 +261,7 @@ function ShoppingHome() {
                   <CardContent className="p-8">
                     <h3 className="text-2xl font-bold mb-4 group-hover:text-orange-600 transition-colors">{article.title}</h3>
                     <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-100">
-                      <span className="text-xs font-bold text-gray-400">BACA LENGKAP</span>
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('common.read_more')}</span>
                       <ArrowRight className="w-4 h-4 text-gray-300 group-hover:translate-x-2 transition-all" />
                     </div>
                   </CardContent>

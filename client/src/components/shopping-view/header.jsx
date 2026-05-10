@@ -21,14 +21,17 @@ import { fetchCategories } from '@/store/shop/common-slice';
 import { v4 as uuidv4 } from 'uuid';
 import logoOmahring from '@/assets/logo-omahring.png';
 import LanguageSwitcher from '../common/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 function MenuItems() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openDropdown, setOpenDropdown] = useState(false);
   const dispatch = useDispatch();
   const { categoryList } = useSelector((state) => state.shopCommon);
+  const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(fetchCategories());
@@ -67,7 +70,7 @@ function MenuItems() {
         className="text-base font-semibold text-gray-800 cursor-pointer hover:text-orange-500 transition-colors duration-300"
         role="button"
       >
-        Beranda
+        {t('nav.home')}
       </div>
 
       {/* Dropdown Toko */}
@@ -80,7 +83,7 @@ function MenuItems() {
             className="text-base font-semibold text-gray-800 cursor-pointer flex items-center hover:text-orange-500 transition-colors duration-300"
             role="button"
           >
-            Toko <span className="ml-1 text-sm">▼</span>
+            {t('nav.shop')} <span className="ml-1 text-sm">▼</span>
           </div>
         </DropdownMenuTrigger>
 
@@ -115,13 +118,26 @@ function MenuItems() {
         className="text-base font-semibold text-gray-800 cursor-pointer hover:text-orange-500 transition-colors duration-300"
         role="button"
       >
-        Informasi
+        {t('nav.information')}
       </div>
+
+      {/* Dashboard Member (Khusus Member) */}
+      {user && user.role === 'member' && (
+        <div
+          onClick={() => handleNavigate({ id: 'dashboard-member', path: '/member/dashboard' })}
+          className="text-base font-bold text-orange-600 cursor-pointer hover:text-orange-700 transition-colors duration-300 flex items-center gap-2"
+          role="button"
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          Dashboard
+        </div>
+      )}
     </nav>
   );
 }
 
 function HeaderRightContent() {
+  const { t } = useTranslation();
   // const { user } = useSelector((state) => state.auth);
   const { cartItems } = useSelector((state) => state.shopCart);
   const [openCartSheet, setOpenCartSheet] = useState(false);
@@ -163,12 +179,12 @@ function HeaderRightContent() {
             </Link>
             <Link to="/auth/login">
               <button className="cursor-pointer px-4 py-2 text-orange-500 bg-white border border-orange-500 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
-                <p className="p2-b">Masuk</p>
+                <p className="p2-b">{t('nav.login')}</p>
               </button>
             </Link>
             <Link to="/auth/register">
               <button className="cursor-pointer px-4 py-2 text-white bg-orange-500 hover:bg-orange-500/80 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
-                <p className="p2-b">Daftar</p>
+                <p className="p2-b">{t('nav.register')}</p>
               </button>
             </Link>
           </div>
@@ -194,33 +210,32 @@ function HeaderRightContent() {
             className="w-56 bg-white border-gray-200 shadow-md"
           >
             <DropdownMenuLabel className="text-gray-800">
-              Masuk sebagai {user?.userName || 'Pengguna'}
+              {t('auth.login')} {user?.userName || 'Pengguna'}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {user.role === 'admin' || user.role === 'manager' ? (
+            {user.role === 'admin' || user.role === 'manager' || user.role === 'member' ? (
               <DropdownMenuItem
-                onClick={() => navigate('/admin/dashboard')}
+                onClick={() => navigate(user.role === 'member' ? '/member/dashboard' : '/admin/dashboard')}
                 className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
               >
                 <LayoutDashboard className="mr-2 h-5 w-5" />
-                Dashboard
+                {t('nav.dashboard')}
               </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem
-                onClick={() => navigate('/shop/account')}
-                className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
-              >
-                <UserCog className="mr-2 h-5 w-5" />
-                Akun
-              </DropdownMenuItem>
-            )}
+            ) : null}
+            <DropdownMenuItem
+              onClick={() => navigate('/shop/account')}
+              className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
+            >
+              <UserCog className="mr-2 h-5 w-5" />
+              {t('nav.account')}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleLogout}
               className="text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-colors duration-300"
             >
               <LogOut className="mr-2 h-5 w-5" />
-              Keluar
+              {t('nav.logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -231,12 +246,12 @@ function HeaderRightContent() {
           </Link>
           <Link to="/auth/login">
             <button className="cursor-pointer px-4 py-2 text-orange-500 bg-white border border-orange-500 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
-              <p className="p2-b">Masuk</p>
+              <p className="p2-b">{t('nav.login')}</p>
             </button>
           </Link>
           <Link to="/auth/register">
             <button className="cursor-pointer px-4 py-2 text-white bg-orange-500 hover:bg-orange-500/80 hover:shadow-lg rounded-[6px] transition-all hover:-translate-y-0.5">
-              <p className="p2-b">Daftar</p>
+              <p className="p2-b">{t('nav.register')}</p>
             </button>
           </Link>
         </div>
@@ -246,12 +261,20 @@ function HeaderRightContent() {
 }
 
 function ShoppingHeader() {
+  const { user } = useSelector((state) => state.auth);
   return (
     <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/shop/home" className="flex items-center">
-          <img src={logoOmahring} alt="Omahring" className="h-8" />
-          <span className="font-bold text-xl text-gray-800">Omahring</span>
+        <Link to="/shop/home" className="flex items-center gap-3">
+          <img src={logoOmahring} alt="Omahring" className="h-8 w-auto" />
+          <div className="flex flex-col">
+            <span className="font-bold text-xl text-gray-800 leading-none">Omahring</span>
+            {user && (
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600 mt-1">
+                {user.role}
+              </span>
+            )}
+          </div>
         </Link>
         <div className="hidden lg:flex lg:items-center lg:gap-6">
           <MenuItems />

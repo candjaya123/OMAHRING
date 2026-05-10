@@ -52,12 +52,16 @@ The project will build upon the existing technology stack:
 *   `session_id` (UUID, PK)
 *   `customer_id` (UUID, FK -> Users)
 *   `status` (Enum: 'active', 'closed')
+*   `assigned_to` (UUID, FK -> Users, nullable) — admin yang handle
+*   `unread_count` (Integer, default 0)
+*   `last_message` (Text, nullable)
+*   `last_message_at` (Timestamp, nullable)
 *   `created_at` (Timestamp)
 
 *   `message_id` (UUID, PK)
 *   `session_id` (UUID, FK -> Chat Sessions)
 *   `sender_id` (UUID, FK -> Users)
-*   `sender_role` (String)
+*   `sender_role` (String) — 'customer', 'admin', 'manager'
 *   `message_text` (Text)
 *   `created_at` (Timestamp)
 
@@ -84,10 +88,13 @@ The project will build upon the existing technology stack:
     *   `GET /api/content` (List approved content for public view)
     *   `PUT /api/content/:id/status` (Admin approve/reject)
 *   **Chat**
-    *   `POST /api/chat/start` (Start a session)
-    *   `POST /api/chat/:sessionId/messages` (Send message)
-    *   `GET /api/chat/:sessionId/messages` (Get history)
-    *   `GET /api/chat/sessions` (Admin/Manager view all sessions/logs)
+    *   `POST /api/shop/chat/start` (Start a session)
+    *   `POST /api/shop/chat/message` (Customer send message)
+    *   `GET /api/shop/chat/messages/:sessionId` (Get history)
+    *   `GET /api/shop/chat/sessions` (Admin/Manager view all sessions/logs)
+    *   `POST /api/shop/chat/reply` (Admin reply - NEW)
+    *   `PUT /api/shop/chat/session/:sessionId/close` (Admin close session - NEW)
+    *   `GET /api/shop/chat/unread-count` (Unread badge count - NEW)
 *   **Shipping (Biteship Integration)**
     *   `POST /api/shipping/rates` (Calculate shipping during checkout)
     *   `POST /api/shipping/create-order` (Generate AWB/Tracking)
@@ -98,10 +105,10 @@ The project will build upon the existing technology stack:
 2.  **Membership Form**: Update registration to collect NIK and Phone Number for members.
 3.  **Omahring Edukasi**: Create a CMS for handling education content, champion bird info (categorized by type), and YouTube videos.
 4.  **Bird Profile System**: Members input bird data -> System generates a unique public URL -> Generates a downloadable QR Code linking to the URL (for printing on bird rings).
-5.  **Customer Chat System**: Implementation of chat history, Supabase Realtime for live updates, and role-based access for Admin/Manager to view chat logs.
+5.  **Customer Chat System**: Full bidirectional chat — customer sends, admin replies in real-time via Supabase Realtime. Manager can monitor all logs (read-only).
 6.  **Member Dashboard**: UI for members to submit articles/YouTube links. Admin approval workflow pipeline.
 7.  **Shipping Integration**: Fetch real-time rates via Biteship API during checkout, save tracking numbers to orders.
-8.  **Multi-language System**: `react-i18next` integration, language switcher dropdown (ID, EN, MS) for all UI text, ensuring SEO-friendly URLs.
+8.  **Multi-language System**: `react-i18next` integration, language switcher dropdown (ID, EN, MS) for all UI text, persisted to localStorage.
 
 ## 5. Folder Structure
 
@@ -110,86 +117,75 @@ client/src/
 ├── assets/
 ├── components/
 │   ├── chat/
-│   │   ├── ChatWidget.jsx
-│   │   └── ChatAdminPanel.jsx
+│   │   ├── ChatWidget.jsx        (existing - diupdate)
+│   │   └── ChatAdminPanel.jsx    (NEW)
 │   ├── common/
-│   │   └── LanguageSwitcher.jsx
+│   │   └── LanguageSwitcher.jsx  (existing - OK)
 │   └── bird/
 │       ├── BirdProfileCard.jsx
 │       └── QRCodeGenerator.jsx
-├── i18n/
-│   ├── locales/
-│   │   ├── id.json
-│   │   ├── en.json
-│   │   └── ms.json
-│   └── index.js
+├── locales/
+│   ├── id.json   (existing - perlu ekspansi besar)
+│   ├── en.json   (existing - perlu ekspansi besar)
+│   └── ms.json   (existing - perlu ekspansi besar)
+├── i18n.js       (existing - perlu update detection config)
 ├── pages/
-│   ├── Home.jsx
-│   ├── BirdProfilePublic.jsx
-│   ├── member-dashboard/
-│   │   ├── SubmitContent.jsx
-│   │   └── RegisterBird.jsx
-│   └── admin-dashboard/
-│       ├── ContentApproval.jsx
-│       └── ChatLogs.jsx
+│   ├── shopping-view/
+│   │   └── home.jsx (existing - tambah t())
+│   └── admin-view/
+│       ├── chat.jsx          (NEW - admin reply panel)
+│       └── chat-logs.jsx     (existing - manager monitoring)
 └── store/
-    ├── slices/
-    │   ├── chatSlice.js
-    │   └── birdSlice.js
-```
+    └── shop/
+        └── chat-slice.js     (existing - tambah thunks)
 
-## 6. Example UI Components (React)
+## 7. Checklist Tugas Spesifik (Esekusi Step-by-Step)
 
-### A. i18n Setup Snippet (`client/src/i18n/index.js`)
-```javascript
-import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
-import en from "./locales/en.json";
-import id from "./locales/id.json";
-import ms from "./locales/ms.json";
+### A. Database & Backend (Chat System)
+- [x] 1. Jalankan SQL Migration di Supabase untuk menambah kolom `assigned_to`, `unread_count`, `last_message`, `last_message_at` ke tabel `chat_sessions`.
+- [x] 2. Update `server/controllers/shop/chat-controller.js`:
+    - [x] Implementasi `replyMessage` (untuk admin).
+    - [x] Implementasi `closeSession` (untuk admin/manager).
+    - [x] Implementasi `getUnreadCount`.
+    - [x] Update `getAllSessions` untuk menyertakan kolom baru.
+- [x] 3. Update `server/routes/shop/chat-routes.js` untuk meregistrasikan endpoint baru tersebut.
 
-i18n.use(initReactI18next).init({
-  resources: {
-    en: { translation: en },
-    id: { translation: id },
-    ms: { translation: ms }
-  },
-  lng: "id", // default language
-  fallbackLng: "en",
-  interpolation: { escapeValue: false }
-});
+### B. Frontend Redux (Chat System)
+- [x] 1. Update `client/src/store/shop/chat-slice.js`:
+    - [x] Tambah `adminReplyMessage` async thunk.
+    - [x] Tambah `closeSession` async thunk.
+    - [x] Tambah `getUnreadCount` async thunk.
+    - [x] Handle extraReducers untuk thunk baru.
 
-export default i18n;
-```
+### C. Frontend UI Admin (Chat System)
+- [x] 1. Buat file baru `client/src/components/chat/ChatAdminPanel.jsx` (Panel chat realtime admin).
+- [x] 2. Buat file baru `client/src/pages/admin-view/chat.jsx` (Halaman admin chat).
+- [x] 3. Update `client/src/App.jsx` untuk menambahkan route `/admin/chat`.
+- [x] 4. Update `client/src/components/admin-view/sidebar.jsx`:
+    - [x] Tambah menu "Chat" (Akses: Admin & Manager).
+    - [x] Tambah logika badge angka unread di menu Chat.
 
-### B. Bird QR Generator Concept (`client/src/components/bird/QRCodeGenerator.jsx`)
-```javascript
-import { QRCodeSVG } from "qrcode.react";
-import { useRef } from "react";
+### D. Multi-Language System (i18next)
+- [x] 1. Update `client/src/i18n.js`: Tambah `i18next-browser-languagedetector` config agar bahasa tersimpan di localStorage.
+- [x] 2. Ekspansi besar-besaran file JSON (Tambahkan minimal 50-70 key baru):
+    - [x] `client/src/locales/id.json`
+    - [x] `client/src/locales/en.json`
+    - [x] `client/src/locales/ms.json`
+- [x] 3. Implementasi `useTranslation()` di komponen utama:
+    - [x] `client/src/components/shopping-view/header.jsx` (Navigasi).
+    - [x] `client/src/pages/shopping-view/home.jsx` (Hero & Sections).
+    - [x] `client/src/pages/shopping-view/listing.jsx` (Filter & Sort).
+    - [x] `client/src/pages/shopping-view/checkout.jsx` (Form Checkout).
+    - [x] `client/src/pages/auth/login.jsx` & `register.jsx`.
+    - [x] `client/src/components/chat/ChatWidget.jsx`.
 
-export default function QRCodeGenerator({ birdId }) {
-  const profileUrl = `${window.location.origin}/birds/${birdId}`;
-  
-  return (
-    <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-white shadow-sm">
-      <h3 className="font-bold text-lg">Bird Identity QR</h3>
-      <QRCodeSVG value={profileUrl} size={200} id="bird-qr" level="H" />
-      <button 
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
-        onClick={() => {
-           // Logic to download SVG or convert to PNG for printing on ring
-           const svg = document.getElementById("bird-qr");
-           // Download logic here...
-        }}
-      >
-        Download QR for Ring
-      </button>
-    </div>
-  );
-}
-```
+### E. Final Polish & Testing
+- [x] 1. Testing chat realtime antar tab (Customer vs Admin).
+- [x] 2. Verifikasi role Manager hanya bisa melihat (readonly) di `chat-logs.jsx`.
+- [x] 3. Verifikasi bahasa tidak berubah saat refresh halaman.
+- [x] 4. Cek error console log dan pastikan bersih.
 
-## 7. Deployment Strategy
+## 6. Deployment Strategy
 *   **Database**: Supabase Hosted (Manage schemas and realtime features)
 *   **Backend API**: Dockerized Node.js app deployed to VPS (e.g., DigitalOcean) or Serverless (Render/Railway).
 *   **Frontend**: Built with Vite and deployed to Vercel, Netlify, or Cloudflare Pages for global CDN distribution.

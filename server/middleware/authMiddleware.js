@@ -25,7 +25,7 @@ const authenticate = async (req, res, next) => {
     }
 
     // Verifikasi token - gunakan secret key yang sama dengan kode lama Anda
-    const decoded = jwt.verify(token, 'CLIENT_SECRET_KEY');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'CLIENT_SECRET_KEY');
 
     // Cari user berdasarkan ID dari token menggunakan Supabase
     const { data: user, error: fetchError } = await supabase

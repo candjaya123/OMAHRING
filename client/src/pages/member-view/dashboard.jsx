@@ -12,6 +12,7 @@ import { registerBird, getMemberBirds } from '@/store/shop/bird-slice';
 import { submitContent } from '@/store/shop/content-slice';
 import { Bird, Plus, FileText, Youtube, Trophy, QrCode, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import MemberArticles from './articles';
 
 const MemberDashboard = () => {
   const dispatch = useDispatch();
@@ -71,9 +72,12 @@ const MemberDashboard = () => {
       </div>
 
       <Tabs defaultValue="my-birds" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md mb-8 bg-gray-100 p-1 rounded-2xl">
+        <TabsList className="grid w-full grid-cols-3 max-w-xl mb-8 bg-gray-100 p-1 rounded-2xl">
           <TabsTrigger value="my-birds" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <Bird className="w-4 h-4 mr-2" /> Burung Saya
+          </TabsTrigger>
+          <TabsTrigger value="my-articles" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <FileText className="w-4 h-4 mr-2" /> Artikel Saya
           </TabsTrigger>
           <TabsTrigger value="submit-content" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <Plus className="w-4 h-4 mr-2" /> Kirim Konten
@@ -151,6 +155,10 @@ const MemberDashboard = () => {
               </div>
             </div>
           </div>
+        </TabsContent>
+        
+        <TabsContent value="my-articles">
+           <MemberArticles />
         </TabsContent>
 
         <TabsContent value="submit-content">

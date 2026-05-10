@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { startChatSession, sendMessage, getChatMessages, addMessage, setSessionId } from '@/store/shop/chat-slice';
+import { startChatSession, sendMessage, getChatMessages, addMessage } from '@/store/shop/chat-slice';
 import { supabase } from '@/config/supabase';
+import { useTranslation } from 'react-i18next';
 
 const ChatWidget = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const { sessionId, messages, isLoading } = useSelector((state) => state.shopChat);
+  const { sessionId, messages, isLoading, allSessions } = useSelector((state) => state.shopChat);
   const scrollRef = useRef(null);
+
+  // Check if current session is closed
+  const currentSession = allSessions?.find(s => s.id === sessionId);
+  const isClosed = currentSession?.status === 'closed';
 
   useEffect(() => {
     if (isOpen && !sessionId && user?.id) {
@@ -51,7 +57,7 @@ const ChatWidget = () => {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !sessionId) return;
+    if (!inputMessage.trim() || !sessionId || isClosed) return;
 
     const messageData = {
       session_id: sessionId,
@@ -81,8 +87,10 @@ const ChatWidget = () => {
                 <MessageCircle className="h-6 w-6" />
               </div>
               <div>
-                <CardTitle className="text-lg font-bold">Omahring Support</CardTitle>
-                <p className="text-[10px] text-orange-200 uppercase font-black tracking-widest">Real-time Chat</p>
+                <CardTitle className="text-lg font-bold">{t('chat.title')}</CardTitle>
+                <p className="text-[10px] text-orange-200 uppercase font-black tracking-widest">
+                   {isClosed ? t('chat.closed') : t('chat.online')}
+                </p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/10 rounded-full">
@@ -90,8 +98,8 @@ const ChatWidget = () => {
             </Button>
           </CardHeader>
           
-          <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-            {messages.map((msg, idx) => (
+          <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 custom-scrollbar">
+            {messages?.length > 0 ? messages.map((msg, idx) => (
               <div
                 key={msg.id || idx}
                 className={`flex ${msg.sender_role === 'customer' || msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
@@ -109,7 +117,12 @@ const ChatWidget = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                <MessageCircle className="w-12 h-12 opacity-20" />
+                <p className="text-xs font-medium">{t('chat.no_messages')}</p>
+              </div>
+            )}
             <div ref={scrollRef} />
           </CardContent>
 
@@ -117,11 +130,12 @@ const ChatWidget = () => {
             <form onSubmit={handleSendMessage} className="flex w-full gap-2">
               <Input
                 value={inputMessage}
+                disabled={isClosed}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Tulis pesan anda..."
+                placeholder={isClosed ? t('chat.closed') : t('chat.placeholder')}
                 className="rounded-xl bg-gray-100 border-none focus-visible:ring-orange-500"
               />
-              <Button type="submit" disabled={!inputMessage.trim() || isLoading} className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl">
+              <Button type="submit" disabled={!inputMessage.trim() || isLoading || isClosed} className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl">
                 <Send className="h-5 w-5" />
               </Button>
             </form>

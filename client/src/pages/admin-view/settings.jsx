@@ -11,8 +11,8 @@ import api from "@/utils/axios";
 
 function AdminSettings() {
   const [settings, setSettings] = useState({
-    rajaongkirApiKey: "",
-    originCityId: "",
+    biteshipApiKey: "",
+    originAreaId: "",
     storeServiceFee: 0,
     cloudinaryCloudName: "",
     cloudinaryApiKey: "",
@@ -36,8 +36,8 @@ function AdminSettings() {
       const result = response.data;
       if (result.success && result.data) {
         setSettings({
-          rajaongkirApiKey: result.data.rajaongkirApiKey || "",
-          originCityId: result.data.originCityId || "",
+          biteshipApiKey: result.data.biteshipApiKey || "",
+          originAreaId: result.data.originAreaId || "",
           storeServiceFee: result.data.storeServiceFee || 0,
           cloudinaryCloudName: result.data.cloudinaryCloudName || "",
           cloudinaryApiKey: result.data.cloudinaryApiKey || "",
@@ -112,38 +112,38 @@ function AdminSettings() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Section 1: RajaOngkir & Shipping */}
+        {/* Section 1: Biteship & Shipping */}
         <Card className="border-none shadow-md rounded-2xl overflow-hidden">
           <CardHeader className="bg-white border-b border-gray-100 pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-50 rounded-lg">
                 <Truck className="w-5 h-5 text-blue-600" />
               </div>
-              <CardTitle>Logistik (RajaOngkir)</CardTitle>
+              <CardTitle>Logistik (Biteship)</CardTitle>
             </div>
             <CardDescription>Konfigurasi pengiriman dan titik asal paket.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="rajaongkirApiKey">RajaOngkir API Key</Label>
+              <Label htmlFor="biteshipApiKey">Biteship API Key</Label>
               <Input 
-                id="rajaongkirApiKey"
-                name="rajaongkirApiKey"
-                value={settings.rajaongkirApiKey}
+                id="biteshipApiKey"
+                name="biteshipApiKey"
+                value={settings.biteshipApiKey}
                 onChange={handleChange}
                 type="password"
-                placeholder="Ex: 8a67xxxxxxxx..."
+                placeholder="Ex: biteship_test_..."
                 className="bg-gray-50 border-gray-200 focus:bg-white transition-all"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="originCityId">ID Kota Asal (Origin City ID)</Label>
+              <Label htmlFor="originAreaId">ID Area Asal (Origin Area ID)</Label>
               <Input 
-                id="originCityId"
-                name="originCityId"
-                value={settings.originCityId}
+                id="originAreaId"
+                name="originAreaId"
+                value={settings.originAreaId}
                 onChange={handleChange}
-                placeholder="Ex: 114 (Denpasar)"
+                placeholder="Ex: IDNP11..."
                 className="bg-gray-50 border-gray-200 focus:bg-white transition-all"
               />
             </div>

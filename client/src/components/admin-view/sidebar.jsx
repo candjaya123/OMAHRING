@@ -7,10 +7,12 @@ import {
   FileText, // 🔹 Impor ikon baru
   UserCog, // 🔹 Impor ikon baru
   Settings,
+  MessageCircle, // 🔹 Impor ikon baru
 } from 'lucide-react';
-import { Fragment } from 'react';
+import { Fragment, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux'; // 🔹 Impor useSelector
+import { useSelector, useDispatch } from 'react-redux'; // 🔹 Impor useSelector
+import { getUnreadCount } from '@/store/shop/chat-slice';
 import { Sheet, SheetContent } from '../ui/sheet';
 import logoOmahring from '@/assets/logo-omahring.png';
 
@@ -67,6 +69,13 @@ const adminSidebarMenuItems = [
     icon: <Settings size={20} />,
     roles: ['admin', 'manager'],
   },
+  {
+    id: 'chat',
+    label: 'Live Chat',
+    path: '/admin/chat',
+    icon: <MessageCircle size={20} />,
+    roles: ['admin', 'manager'],
+  },
   // 🔹 MENU BARU KHUSUS MANAGER 🔹
   {
     id: 'reports',
@@ -82,6 +91,13 @@ const adminSidebarMenuItems = [
     icon: <UserCog size={20} />,
     roles: ['manager'], // 👈 Hanya bisa diakses oleh manager
   },
+  {
+    id: 'chat-logs',
+    label: 'Chat Logs',
+    path: '/admin/chat-logs',
+    icon: <MessageCircle size={20} />,
+    roles: ['manager'], // 👈 Hanya bisa diakses oleh manager
+  },
 ];
 
 // =================================================================
@@ -90,8 +106,20 @@ const adminSidebarMenuItems = [
 function SidebarContent({ setOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch(); // 🔹 Ambil dispatch
   // 🔹 Ambil data pengguna yang sedang login dari Redux
   const { user } = useSelector((state) => state.auth);
+  const { unreadCount } = useSelector((state) => state.shopChat); // 🔹 Ambil unreadCount
+
+  useEffect(() => {
+    // Ambil jumlah unread secara berkala
+    const interval = setInterval(() => {
+      dispatch(getUnreadCount());
+    }, 10000); // 10 detik
+
+    dispatch(getUnreadCount());
+    return () => clearInterval(interval);
+  }, [dispatch]);
 
   function handleNavigate(path) {
     navigate(path);
@@ -124,7 +152,7 @@ function SidebarContent({ setOpen }) {
               key={item.id}
               onClick={() => handleNavigate(item.path)}
               className={`
-                flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200
+                flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-all duration-200
                 ${
                   isActive
                     ? 'bg-orange-500 text-white shadow-sm'
@@ -132,8 +160,15 @@ function SidebarContent({ setOpen }) {
                 }
               `}
             >
-              {item.icon}
-              <span className="font-medium text-sm">{item.label}</span>
+              <div className="flex items-center gap-3">
+                {item.icon}
+                <span className="font-medium text-sm">{item.label}</span>
+              </div>
+              {item.id === 'chat' && unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
             </div>
           );
         })}

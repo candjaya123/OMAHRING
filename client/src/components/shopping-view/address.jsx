@@ -40,7 +40,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
 
   const fetchProvinces = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/provinces`);
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/shop/shipping/provinces`);
       const data = await res.json();
       if (data.success) {
         setProvinces(data.data);
@@ -53,7 +53,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
   const fetchCities = async (provinceId) => {
     if (!provinceId) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/shop/shipping/cities/${provinceId}`);
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/shop/shipping/cities/${provinceId}`);
       const data = await res.json();
       if (data.success) {
         setCities(data.data);

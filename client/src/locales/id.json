@@ -1,25 +1,72 @@
 {
+  "nav": {
+    "home": "Beranda",
+    "shop": "Toko",
+    "information": "Informasi",
+    "membership": "Keanggotaan",
+    "login": "Masuk",
+    "register": "Daftar",
+    "logout": "Keluar",
+    "account": "Akun",
+    "dashboard": "Dasbor"
+  },
   "hero": {
     "title": "Omahring – Jadikan kebanggaan burung juara anda",
-    "subtitle": "Ring eksklusif meningkatkan nilai dan identitas burung anda."
+    "subtitle": "Ring eksklusif meningkatkan nilai dan identitas burung anda.",
+    "cta": "Lihat Produk"
   },
   "sections": {
     "products": "Produk Kami",
     "bird_champion": "Info Burung Juara",
     "membership": "Keanggotaan",
-    "education": "Edukasi & Info"
+    "education": "Edukasi & Info",
+    "featured_products": "Produk Pilihan Kami"
   },
-  "membership": {
-    "benefits": "Keuntungan Member",
-    "discount": "Diskon Khusus",
-    "register": "Daftar Breeder/Burung",
-    "branding": "Paparan Branding",
-    "barcode": "Barcode untuk Identitas Burung"
+  "product": {
+    "add_to_cart": "Tambah ke Keranjang",
+    "view_detail": "Lihat Detail",
+    "see_all": "Lihat Semua Produk",
+    "no_product": "Tidak ada produk tersedia saat ini.",
+    "categories": "Kategori",
+    "sort_by": "Urutkan",
+    "price_low_to_high": "Harga: Rendah ke Tinggi",
+    "price_high_to_low": "Harga: Tinggi ke Rendah"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "shipping_address": "Alamat Pengiriman",
+    "payment_method": "Metode Pembayaran",
+    "order_summary": "Ringkasan Pesanan",
+    "total": "Total Keseluruhan",
+    "place_order": "Buat Pesanan",
+    "success_title": "Pembayaran Berhasil!",
+    "success_message": "Terima kasih atas pesanan anda."
   },
   "auth": {
     "nik": "NIK",
     "phone": "No HP",
     "register": "Daftar",
-    "login": "Masuk"
+    "login": "Masuk",
+    "email": "Email",
+    "password": "Kata Sandi",
+    "name": "Nama Lengkap",
+    "already_have_account": "Sudah punya akun?",
+    "dont_have_account": "Belum punya akun?"
+  },
+  "chat": {
+    "title": "Omahring Support",
+    "placeholder": "Tulis pesan anda...",
+    "send": "Kirim",
+    "online": "Online",
+    "closed": "Sesi ditutup",
+    "no_messages": "Belum ada pesan."
+  },
+  "common": {
+    "loading": "Memuat...",
+    "error": "Terjadi kesalahan",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "read_more": "BACA LENGKAP"
   }
 }

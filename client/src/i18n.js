@@ -27,7 +27,11 @@ i18n
     fallbackLng: 'id',
     debug: false,
     interpolation: {
-      escapeValue: false, // not needed for react as it escapes by default
+      escapeValue: false,
+    },
+    detection: {
+      order: ['localStorage', 'cookie', 'htmlTag', 'navigator'],
+      caches: ['localStorage', 'cookie'],
     }
   });
 

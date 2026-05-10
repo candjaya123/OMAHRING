@@ -72,4 +72,26 @@ const createShippingOrder = async (req, res) => {
     }
   };
 
-module.exports = { getCouriers, getCost, createShippingOrder };
+const searchAreas = async (req, res) => {
+  try {
+    const { input } = req.query;
+    if (!input || input.length < 3) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const settings = await getStoreSettings();
+    const apiKey = settings.biteshipApiKey || process.env.BITESHIP_API_KEY;
+
+    const response = await axios.get(`${BITESHIP_API_URL}/maps/areas`, {
+      params: { countries: 'ID', input, type: 'single' },
+      headers: { Authorization: `Bearer ${apiKey}` }
+    });
+
+    res.status(200).json({ success: true, data: response.data.areas });
+  } catch (error) {
+    console.error('Biteship Areas Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mencari area pengiriman' });
+  }
+};
+
+module.exports = { getCouriers, getCost, createShippingOrder, searchAreas };

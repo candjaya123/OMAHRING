@@ -25,8 +25,17 @@ function CheckAuth({ isAuthenticated, user, children }) {
     if (!isAuthenticated) {
       return <Navigate to="/auth/login" />;
     }
-    // ⬇️ PERBAIKAN DI SINI ⬇️
     if (user?.role !== 'admin' && user?.role !== 'manager') {
+      return <Navigate to="/unauth-page" />;
+    }
+  }
+
+  // 🔹 Member route → wajib login & role member (admin/manager juga boleh)
+  if (location.pathname.includes('/member')) {
+    if (!isAuthenticated) {
+      return <Navigate to="/auth/login" />;
+    }
+    if (user?.role !== 'member' && user?.role !== 'admin' && user?.role !== 'manager') {
       return <Navigate to="/unauth-page" />;
     }
   }

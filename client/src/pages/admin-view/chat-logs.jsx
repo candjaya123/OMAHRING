@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getChatMessages } from '@/store/shop/chat-slice';
-import axios from 'axios';
+import api from '@/utils/axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, User, Calendar, Loader2 } from 'lucide-react';
@@ -18,7 +18,7 @@ const AdminChatLogs = () => {
 
   const fetchSessions = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop/chat/sessions`);
+      const response = await api.get(`/shop/chat/sessions`);
       setSessions(response.data.data);
     } catch (error) {
       console.error('Error fetching sessions:', error);
@@ -28,7 +28,7 @@ const AdminChatLogs = () => {
   const fetchMessages = async (sessionId) => {
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop/chat/messages/${sessionId}`);
+      const response = await api.get(`/shop/chat/messages/${sessionId}`);
       setMessages(response.data.data);
       setSelectedSession(sessionId);
     } catch (error) {
