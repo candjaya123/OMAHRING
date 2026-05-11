@@ -10,14 +10,14 @@ const initialState = {
 
 export const addToCart = createAsyncThunk(
   'cart/addToCart',
-  async ({ userId, sessionId, productId, quantity, variant }, { rejectWithValue }) => {
+  async ({ userId, sessionId, productId, quantity, variantName }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/shop/cart/add', {
-        userId: userId || null,
-        sessionId: sessionId || null,
+      const response = await api.post('/cart/add', {
+        userId,
+        sessionId,
         productId,
         quantity,
-        variant,
+        variantName,
       });
       return response.data;
     } catch (err) {
@@ -30,7 +30,7 @@ export const fetchCartItems = createAsyncThunk(
   'cart/fetchCartItems',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/shop/cart/get/${id}`);
+      const response = await api.get(`/cart/${id}`);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -42,7 +42,7 @@ export const deleteCartItem = createAsyncThunk(
   'cart/deleteCartItem',
   async ({ id, productId, variantName }, { rejectWithValue }) => {
     try {
-      const response = await api.delete(`/shop/cart/${id}/${productId}/${variantName}`);
+      const response = await api.delete(`/cart/${id}/${productId}/${variantName}`);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -54,7 +54,7 @@ export const updateCartQuantity = createAsyncThunk(
   'cart/updateCartQuantity',
   async ({ userId, sessionId, productId, variantName, quantity }, { rejectWithValue }) => {
     try {
-      const response = await api.put('/shop/cart/update-cart', {
+      const response = await api.put('/cart/update-quantity', {
         userId,
         sessionId,
         productId,
@@ -72,7 +72,7 @@ export const mergeCart = createAsyncThunk(
   'cart/mergeCart',
   async ({ userId, sessionId, action }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/shop/cart/merge-cart', {
+      const response = await api.post('/cart/merge', {
         userId,
         sessionId,
         action,
@@ -109,9 +109,13 @@ const shoppingCartSlice = createSlice({
       .addCase(addToCart.fulfilled, (state, action) => {
         state.isLoading = false;
         if (action.payload?.success) {
-          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
-          if (action.payload.data?.sessionId) {
-            state.sessionId = action.payload.data.sessionId;
+          const data = action.payload.data;
+          state.cartItems = {
+            items: data.cart_items || [],
+            cartTotal: data.cart_total || 0,
+          };
+          if (data.session_id) {
+            state.sessionId = data.session_id;
           }
         }
       })
@@ -127,7 +131,11 @@ const shoppingCartSlice = createSlice({
       .addCase(fetchCartItems.fulfilled, (state, action) => {
         state.isLoading = false;
         if (action.payload?.success) {
-          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+          const data = action.payload.data;
+          state.cartItems = {
+            items: data.cart_items || [],
+            cartTotal: data.cart_total || 0,
+          };
         }
       })
       .addCase(fetchCartItems.rejected, (state, action) => {
@@ -142,7 +150,11 @@ const shoppingCartSlice = createSlice({
       .addCase(updateCartQuantity.fulfilled, (state, action) => {
         state.isLoading = false;
         if (action.payload?.success) {
-          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+          const data = action.payload.data;
+          state.cartItems = {
+            items: data.cart_items || [],
+            cartTotal: data.cart_total || 0,
+          };
         }
       })
       .addCase(updateCartQuantity.rejected, (state, action) => {
@@ -157,7 +169,11 @@ const shoppingCartSlice = createSlice({
       .addCase(deleteCartItem.fulfilled, (state, action) => {
         state.isLoading = false;
         if (action.payload?.success) {
-          state.cartItems = action.payload.data || { items: [], cartTotal: 0 };
+          const data = action.payload.data;
+          state.cartItems = {
+            items: data.cart_items || [],
+            cartTotal: data.cart_total || 0,
+          };
         }
       })
       .addCase(deleteCartItem.rejected, (state, action) => {

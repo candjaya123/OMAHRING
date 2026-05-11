@@ -1,67 +1,65 @@
-const express = require("express");
-const cookieParser = require("cookie-parser");
-const cors = require("cors");
-const dotenv = require("dotenv");
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const env = require('./config/env');
+const errorMiddleware = require('./middleware/error.middleware');
 
-// Load environment variables
-dotenv.config();
+// Routes (Legacy - will be migrated to modules/)
+// Modules (Target Architecture)
+const authRouter = require('./modules/auth/auth.routes');
+const productsRouter = require('./modules/products/products.routes');
+const cartRouter = require('./modules/cart/cart.routes');
+const chatRouter = require('./modules/chat/chat.routes');
+const birdsRouter = require('./modules/birds/birds.routes');
+const articlesRouter = require('./modules/articles/articles.routes');
+const analyticsRouter = require('./modules/analytics/analytics.routes');
+const promosRouter = require('./modules/promos/promos.routes');
+const settingsRouter = require('./modules/settings/settings.routes');
+const membersRouter = require('./modules/members/members.routes');
+const ordersRouter = require('./modules/orders/orders.routes');
 
-const authRouter = require("./routes/auth/auth-routes");
-const adminProductsRouter = require("./routes/admin/products-routes");
-const adminOrderRouter = require("./routes/admin/order-routes");
-const adminUserRouter = require("./routes/admin/user-routes");
-const adminPromoRouter = require("./routes/admin/promo-routes");
-const adminStaffRouter = require("./routes/admin/staff-routes");
-const adminAnalyticsRouter = require("./routes/admin/analytics-routes");
-const adminArticleRouter = require("./routes/admin/article-routes");
-const adminCategoryRouter = require("./routes/admin/category-routes"); // 🔹 Impor router kategori
-const adminSettingsRouter = require("./routes/admin/settings-routes");
-const shopProductsRouter = require("./routes/shop/products-routes");
-const shopCartRouter = require("./routes/shop/cart-routes");
-const shopAddressRouter = require("./routes/shop/address-routes");
-const shopOrderRouter = require("./routes/shop/order-routes");
-const shopSearchRouter = require("./routes/shop/search-routes");
-const shopReviewRouter = require("./routes/shop/review-routes");
-const shopShippingRouter = require("./routes/shop/shipping-routes");
-const shopCommonRouter = require("./routes/shop/common-routes");
-const shopBirdRouter = require("./routes/shop/bird-routes");
-const shopChatRouter = require("./routes/shop/chat-routes");
-
-const commonFeatureRouter = require("./routes/common/feature-routes");
-
-// Connect to Database (Supabase handled via config/supabase.js)
-console.log("✅ Supabase client initialized (connected via API)");
+// Legacy Routes (Pending Refactor)
+const adminStaffRouter = require('./routes/admin/staff-routes');
+const adminCategoryRouter = require('./routes/admin/category-routes');
+const shopAddressRouter = require('./routes/shop/address-routes');
+const shopSearchRouter = require('./routes/shop/search-routes');
+const shopReviewRouter = require('./routes/shop/review-routes');
+const shopShippingRouter = require('./routes/shop/shipping-routes');
+const shopCommonRouter = require('./routes/shop/common-routes');
+const commonFeatureRouter = require('./routes/common/feature-routes');
 
 const app = express();
-app.set("trust proxy", 1);
-const PORT = process.env.PORT || 5005;
 
-// --- Middleware ---
+// --- Configuration ---
+app.set('trust proxy', 1);
+const PORT = env.PORT;
+
+// --- Global Middleware ---
 app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://omahring.com",
-        "https://www.omahring.com",
-        process.env.CLIENT_URL,
-        process.env.FRONTEND_URL,
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://omahring.com',
+        'https://www.omahring.com',
+        env.CLIENT_URL,
+        env.FRONTEND_URL,
       ].filter(Boolean);
 
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(new Error('Not allowed by CORS'));
       }
     },
-    methods: ["GET", "POST", "DELETE", "PUT"],
+    methods: ['GET', 'POST', 'DELETE', 'PUT'],
     allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Cache-Control",
-      "Expires",
-      "Pragma",
+      'Content-Type',
+      'Authorization',
+      'Cache-Control',
+      'Expires',
+      'Pragma',
     ],
     credentials: true,
   })
@@ -71,30 +69,51 @@ app.use(cookieParser());
 app.use(express.json());
 
 // --- Routes ---
-app.use("/api/auth", authRouter);
-app.use("/api/admin/products", adminProductsRouter);
-app.use("/api/admin/articles", adminArticleRouter);
-app.use("/api/admin/categories", adminCategoryRouter); // 🔹 Daftarkan endpoint kategori
-app.use("/api/admin/orders", adminOrderRouter);
-app.use("/api/admin/users", adminUserRouter);
-app.use("/api/admin/promos", adminPromoRouter);
-app.use("/api/admin/staff", adminStaffRouter);
-app.use("/api/admin/analytics", adminAnalyticsRouter);
-app.use("/api/admin/settings", adminSettingsRouter);
-app.use("/api/shop/products", shopProductsRouter);
-app.use("/api/shop/cart", shopCartRouter);
-app.use("/api/shop/address", shopAddressRouter);
-app.use("/api/shop/order", shopOrderRouter);
-app.use("/api/shop/search", shopSearchRouter);
-app.use("/api/shop/review", shopReviewRouter);
-app.use("/api/shop/shipping", shopShippingRouter);
-app.use("/api/shop/common", shopCommonRouter);
-app.use("/api/shop/birds", shopBirdRouter);
-app.use("/api/shop/chat", shopChatRouter);
+// --- Routes ---
+app.use('/api/auth', authRouter);
 
-app.use("/api/common/feature", commonFeatureRouter);
+// Domain Modules
+app.use('/api/products', productsRouter);
+app.use('/api/cart', cartRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/birds', birdsRouter);
+app.use('/api/articles', articlesRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/promos', promosRouter);
+app.use('/api/settings', settingsRouter);
+app.use('/api/members', membersRouter);
+
+// Admin Specific (Legacy Compatibility)
+app.use('/api/admin/products', productsRouter);
+app.use('/api/admin/articles', articlesRouter);
+app.use('/api/admin/categories', adminCategoryRouter);
+app.use('/api/admin/orders', ordersRouter);
+app.use('/api/admin/users', membersRouter);
+app.use('/api/admin/promos', promosRouter);
+app.use('/api/admin/staff', adminStaffRouter);
+app.use('/api/admin/analytics', analyticsRouter);
+app.use('/api/admin/settings', settingsRouter);
+
+// Shop Specific (Legacy Compatibility)
+app.use('/api/shop/products', productsRouter);
+app.use('/api/shop/cart', cartRouter);
+app.use('/api/shop/address', shopAddressRouter);
+app.use('/api/shop/order', ordersRouter);
+app.use('/api/shop/search', shopSearchRouter);
+app.use('/api/shop/review', shopReviewRouter);
+app.use('/api/shop/shipping', shopShippingRouter);
+app.use('/api/shop/common', shopCommonRouter);
+app.use('/api/shop/birds', birdsRouter);
+app.use('/api/shop/chat', chatRouter);
+
+// Common
+app.use('/api/common/feature', commonFeatureRouter);
+
+// --- Global Error Handler ---
+app.use(errorMiddleware);
 
 // --- Server ---
 app.listen(PORT, () => {
-  console.log(`🚀 Server is now running on port ${PORT}`);
+  console.log(`🚀 OMAHRING Server is running on port ${PORT} [${env.NODE_ENV}]`);
 });

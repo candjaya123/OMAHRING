@@ -43,7 +43,11 @@ function ShoppingCheckout() {
   const [areaOptions, setAreaOptions] = useState([]);
   const [isSearchingArea, setIsSearchingArea] = useState(false);
   const [showAreaDropdown, setShowAreaDropdown] = useState(false);
-  const [storeSettings, setStoreSettings] = useState({ storeServiceFee: 0, originAreaId: '' });
+  const [storeSettings, setStoreSettings] = useState({ 
+    storeServiceFee: 0, 
+    originAreaId: '',
+    paymentMode: 'midtrans' 
+  });
 
   const [newAddressData, setNewAddressData] = useState({
     address: '',
@@ -82,6 +86,14 @@ function ShoppingCheckout() {
   }, [dispatch, user]);
 
   useEffect(() => {
+    if (storeSettings.paymentMode === 'manual') {
+      setPaymentCategory('manual');
+    } else if (paymentCategory === 'manual') {
+      setPaymentCategory(''); // Reset if switched back to midtrans
+    }
+  }, [storeSettings.paymentMode]);
+
+  useEffect(() => {
     if (addressList && addressList.length > 0 && !selectedAddressId) {
       const defaultAddress = addressList.find((addr) => addr.isDefault) || addressList[0];
       setSelectedAddressId(defaultAddress._id);
@@ -94,7 +106,11 @@ function ShoppingCheckout() {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/admin/settings`);
       const result = await res.json();
       if (result.success && result.data) {
-        setStoreSettings({ storeServiceFee: parseInt(result.data.storeServiceFee) || 0, originAreaId: result.data.originAreaId });
+        setStoreSettings({ 
+          storeServiceFee: parseInt(result.data.store_service_fee) || 0, 
+          originAreaId: result.data.origin_area_id,
+          paymentMode: result.data.payment_mode || 'midtrans'
+        });
       }
     } catch (error) {
       console.error(error);
@@ -336,9 +352,14 @@ function ShoppingCheckout() {
     };
 
     dispatch(createNewOrder(orderData)).then((res) => {
-      if (res.payload?.token) {
+      if (res.payload?.success) {
         toast.toastSuccess('Sukses', 'Pesanan berhasil dibuat.');
-        window.location.href = `/shop/payment-pending/${res.payload.orderId}`;
+        const { paymentMode, orderId } = res.payload.data;
+        if (paymentMode === 'midtrans') {
+          navigate(`/shop/payment-pending/${orderId}`);
+        } else {
+          navigate(`/shop/payment-instruction/${orderId}`);
+        }
       } else {
         toast.toastError('Gagal', res.payload || 'Terjadi kesalahan saat membuat pesanan.');
       }
@@ -645,66 +666,78 @@ function ShoppingCheckout() {
                   <h2 className="text-xl font-bold">{t('checkout.payment_method')}</h2>
                 </div>
                 
-                <RadioGroup 
-                  value={paymentCategory} 
-                  onValueChange={setPaymentCategory}
-                  className="space-y-3 mt-4"
-                >
-                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'bank_transfer' ? 'border-orange-500 bg-orange-50' : ''}`}>
-                    <div className="flex items-center space-x-3">
-                      <RadioGroupItem value="bank_transfer" id="bank_transfer" />
-                      <Label htmlFor="bank_transfer" className="flex flex-col cursor-pointer">
-                        <span className="font-semibold text-gray-800">Transfer Bank (Virtual Account)</span>
-                        <span className="text-xs text-gray-500">BCA, BNI, BRI, Mandiri, dll.</span>
-                      </Label>
+                {storeSettings.paymentMode === 'midtrans' ? (
+                  <RadioGroup 
+                    value={paymentCategory} 
+                    onValueChange={setPaymentCategory}
+                    className="space-y-3 mt-4"
+                  >
+                    <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'bank_transfer' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="bank_transfer" id="bank_transfer" />
+                        <Label htmlFor="bank_transfer" className="flex flex-col cursor-pointer">
+                          <span className="font-semibold text-gray-800">Transfer Bank (Virtual Account)</span>
+                          <span className="text-xs text-gray-500">BCA, BNI, BRI, Mandiri, dll.</span>
+                        </Label>
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ Rp 4.000</div>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ Rp 4.000</div>
-                  </div>
 
-                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'qris' ? 'border-orange-500 bg-orange-50' : ''}`}>
-                    <div className="flex items-center space-x-3">
-                      <RadioGroupItem value="qris" id="qris" />
-                      <Label htmlFor="qris" className="flex flex-col cursor-pointer">
-                        <span className="font-semibold text-gray-800">QRIS</span>
-                        <span className="text-xs text-gray-500">Scan QR Code dengan aplikasi apapun</span>
-                      </Label>
+                    <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'qris' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="qris" id="qris" />
+                        <Label htmlFor="qris" className="flex flex-col cursor-pointer">
+                          <span className="font-semibold text-gray-800">QRIS</span>
+                          <span className="text-xs text-gray-500">Scan QR Code dengan aplikasi apapun</span>
+                        </Label>
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 0.7%</div>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 0.7%</div>
-                  </div>
 
-                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'ewallet' ? 'border-orange-500 bg-orange-50' : ''}`}>
-                    <div className="flex items-center space-x-3">
-                      <RadioGroupItem value="ewallet" id="ewallet" />
-                      <Label htmlFor="ewallet" className="flex flex-col cursor-pointer">
-                        <span className="font-semibold text-gray-800">E-Wallet</span>
-                        <span className="text-xs text-gray-500">GoPay, ShopeePay</span>
-                      </Label>
+                    <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'ewallet' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="ewallet" id="ewallet" />
+                        <Label htmlFor="ewallet" className="flex flex-col cursor-pointer">
+                          <span className="font-semibold text-gray-800">E-Wallet</span>
+                          <span className="text-xs text-gray-500">GoPay, ShopeePay</span>
+                        </Label>
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 2%</div>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 2%</div>
-                  </div>
 
-                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'minimarket' ? 'border-orange-500 bg-orange-50' : ''}`}>
-                    <div className="flex items-center space-x-3">
-                      <RadioGroupItem value="minimarket" id="minimarket" />
-                      <Label htmlFor="minimarket" className="flex flex-col cursor-pointer">
-                        <span className="font-semibold text-gray-800">Gerai Minimarket</span>
-                        <span className="text-xs text-gray-500">Indomaret, Alfamart</span>
-                      </Label>
+                    <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'minimarket' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="minimarket" id="minimarket" />
+                        <Label htmlFor="minimarket" className="flex flex-col cursor-pointer">
+                          <span className="font-semibold text-gray-800">Gerai Minimarket</span>
+                          <span className="text-xs text-gray-500">Indomaret, Alfamart</span>
+                        </Label>
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ Rp 5.000</div>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ Rp 5.000</div>
-                  </div>
 
-                  <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'credit_card' ? 'border-orange-500 bg-orange-50' : ''}`}>
-                    <div className="flex items-center space-x-3">
-                      <RadioGroupItem value="credit_card" id="credit_card" />
-                      <Label htmlFor="credit_card" className="flex flex-col cursor-pointer">
-                        <span className="font-semibold text-gray-800">Kartu Kredit / Debit</span>
-                        <span className="text-xs text-gray-500">Visa, MasterCard, JCB</span>
-                      </Label>
+                    <div className={`flex justify-between items-center p-3 border rounded-lg cursor-pointer ${paymentCategory === 'credit_card' ? 'border-orange-500 bg-orange-50' : ''}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="credit_card" id="credit_card" />
+                        <Label htmlFor="credit_card" className="flex flex-col cursor-pointer">
+                          <span className="font-semibold text-gray-800">Kartu Kredit / Debit</span>
+                          <span className="text-xs text-gray-500">Visa, MasterCard, JCB</span>
+                        </Label>
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 2.9% + Rp 2.000</div>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium whitespace-nowrap">+ 2.9% + Rp 2.000</div>
+                  </RadioGroup>
+                ) : (
+                  <div className="mt-4 p-4 border-2 border-orange-200 bg-orange-50 rounded-2xl flex items-center gap-4">
+                    <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                       <CreditCard className="w-6 h-6" />
+                    </div>
+                    <div>
+                       <h3 className="font-bold text-gray-900">Transfer Manual (QRIS / Bank)</h3>
+                       <p className="text-sm text-gray-600">Instruksi pembayaran akan diberikan setelah pesanan dibuat.</p>
+                    </div>
                   </div>
-                </RadioGroup>
+                )}
               </CardContent>
             </Card>
           </div>

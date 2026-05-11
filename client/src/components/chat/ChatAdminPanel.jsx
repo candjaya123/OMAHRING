@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageCircle, Send, User, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import SessionContextBadge from './SessionContextBadge';
 
 const ChatAdminPanel = ({ isReadOnly = false }) => {
   const { t } = useTranslation();
@@ -152,6 +153,7 @@ const ChatAdminPanel = ({ isReadOnly = false }) => {
                       <span className="flex items-center gap-1 text-gray-400"><CheckCircle2 className="w-3 h-3" /> Closed</span>
                     )}
                   </p>
+                  <SessionContextBadge session={selectedSession} />
                 </div>
               </div>
               {!isReadOnly && selectedSession.status === 'active' && (

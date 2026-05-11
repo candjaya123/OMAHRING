@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * An elegant post card with an image, designed for a light theme.
@@ -31,12 +32,12 @@ const PostCard = ({ post }) => {
           <p className="text-gray-500 text-sm">By <span className="font-medium text-gray-700">{post.author}</span></p>
         </div>
         <div className="mt-6 pt-4 border-t border-gray-200/80">
-          <a href="#" className="font-semibold text-sm text-orange-600 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <Link to={`/shop/article/${post.id}`} className="font-semibold text-sm text-orange-600 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Read More
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
               <path fillRule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z"/>
             </svg>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

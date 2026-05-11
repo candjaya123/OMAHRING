@@ -15,14 +15,14 @@ export const fetchAllFilteredProducts = createAsyncThunk(
       sortBy: sortParams,
     });
 
-    const result = await api.get(`/shop/products/get?${query}`);
+    const result = await api.get(`/products?${query}`);
 
     return result?.data;
   }
 );
 
 export const fetchProductDetails = createAsyncThunk('/products/fetchProductDetails', async (id) => {
-  const result = await api.get(`/shop/products/get/${id}`);
+  const result = await api.get(`/products/${id}`);
 
   return result?.data;
 });

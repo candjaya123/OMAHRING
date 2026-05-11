@@ -10,6 +10,7 @@ import useToast from '@/hooks/useToast';
 import { ArrowLeft, ChevronLeft, ChevronRight, Package, ShieldCheck, Truck, ShoppingCart } from 'lucide-react';
 import StarRatingComponent from '@/components/common/star-rating';
 import { v4 as uuidv4 } from 'uuid';
+import { setChatContext } from '@/store/shop/chat-slice';
 
 function ProductDetailPage() {
   const { productId } = useParams();
@@ -43,7 +44,20 @@ function ProductDetailPage() {
     if (currentProduct && currentProduct.variants && currentProduct.variants.length > 0) {
       setSelectedVariant(currentProduct.variants[0]);
     }
-  }, [currentProduct]);
+    
+    if (currentProduct) {
+      dispatch(setChatContext({
+        type: 'product',
+        id: currentProduct.id || currentProduct._id,
+        title: currentProduct.title,
+        url: window.location.pathname
+      }));
+    }
+
+    return () => {
+      dispatch(setChatContext(null));
+    };
+  }, [currentProduct, dispatch]);
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {

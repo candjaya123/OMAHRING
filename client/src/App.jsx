@@ -35,10 +35,8 @@ import ProductDetailPage from './pages/shopping-view/product-detail';
 import { v4 as uuidv4 } from 'uuid';
 import PaymentPendingPage from './pages/shopping-view/payment-pending';
 import { ToastContainer } from 'react-toastify';
-import BirdProfile from './pages/bird-profile';
-
-import AdminChatLogs from './pages/admin-view/chat-logs';
-import AdminChat from './pages/admin-view/chat';
+import ArticleDetailPage from './pages/shopping-view/article-detail';
+import PaymentInstructionPage from './pages/shopping-view/payment-instruction';
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
@@ -132,11 +130,13 @@ function App() {
           <Route path="listing" element={<ShoppingListing />} />
           <Route path="search" element={<SearchProducts />} />
           <Route path="blog" element={<BlogPage />} />
+          <Route path="article/:id" element={<ArticleDetailPage />} />
           <Route path="membership" element={<MembershipPage />} />
           <Route path="product/:productId" element={<ProductDetailPage />} />
           <Route path="checkout" element={<ShoppingCheckout />} />
           <Route path="payment-success" element={<PaymentSuccessPage />} />
           <Route path="payment-pending/:orderId" element={<PaymentPendingPage />} />
+          <Route path="payment-instruction/:orderId" element={<PaymentInstructionPage />} />
           <Route path="account" element={<ShoppingAccount />} />
         </Route>
 

@@ -11,7 +11,7 @@ export const registerBird = createAsyncThunk(
   "/birds/registerBird",
   async (formData) => {
     const response = await api.post(
-      `/shop/birds/register`,
+      `/birds/register`,
       formData
     );
     return response.data;
@@ -22,7 +22,7 @@ export const getBirdDetails = createAsyncThunk(
   "/birds/getBirdDetails",
   async (id) => {
     const response = await api.get(
-      `/shop/birds/${id}`
+      `/birds/${id}`
     );
     return response.data;
   }
@@ -32,7 +32,7 @@ export const getMemberBirds = createAsyncThunk(
   "/birds/getMemberBirds",
   async (memberId) => {
     const response = await api.get(
-      `/shop/birds/member/${memberId}`
+      `/birds/member/${memberId}`
     );
     return response.data;
   }

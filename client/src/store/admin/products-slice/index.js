@@ -16,7 +16,7 @@ export const uploadProductImage = createAsyncThunk(
       const formData = new FormData();
       formData.append('my_file', imageFile);
 
-      const response = await api.post('/admin/products/upload-image', formData, {
+      const response = await api.post('/products/upload-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -33,7 +33,7 @@ export const addNewProduct = createAsyncThunk(
   '/products/addnewproduct',
   async (formData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/admin/products/add', formData, {
+      const response = await api.post('/products', formData, {
         headers: { 'Content-Type': 'application/json' },
       });
       return response.data;
@@ -47,7 +47,7 @@ export const fetchAllProducts = createAsyncThunk(
   '/products/fetchAllProducts',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/admin/products/get');
+      const response = await api.get('/products');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Fetch products failed' });
@@ -59,7 +59,7 @@ export const fetchProductById = createAsyncThunk(
   '/products/fetchProductById',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/admin/products/get/${id}`);
+      const response = await api.get(`/products/${id}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Fetch products failed' });
@@ -71,7 +71,7 @@ export const editProduct = createAsyncThunk(
   '/products/editProduct',
   async ({ id, formData }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/admin/products/edit/${id}`, formData, {
+      const response = await api.put(`/products/${id}`, formData, {
         headers: { 'Content-Type': 'application/json' },
       });
       return response.data;
@@ -85,7 +85,7 @@ export const deleteProduct = createAsyncThunk(
   '/products/deleteProduct',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.delete(`/admin/products/delete/${id}`);
+      const response = await api.delete(`/products/${id}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Delete product failed' });
@@ -168,7 +168,7 @@ const adminProductsSlice = createSlice({
         state.isLoading = false;
         if (action.payload?.data) {
           const index = state.productList.findIndex(
-            (product) => product._id === action.payload.data._id
+            (product) => product.id === action.payload.data.id
           );
           if (index !== -1) {
             state.productList[index] = action.payload.data;
@@ -189,7 +189,7 @@ const adminProductsSlice = createSlice({
         // 🔹 Hapus produk dari list menggunakan meta.arg (ID yang dikirim)
         if (action.meta?.arg) {
           state.productList = state.productList.filter(
-            (product) => product._id !== action.meta.arg
+            (product) => product.id !== action.meta.arg
           );
         }
       })

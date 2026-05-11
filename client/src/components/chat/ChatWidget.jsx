@@ -14,7 +14,7 @@ const ChatWidget = () => {
   const [inputMessage, setInputMessage] = useState('');
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const { sessionId, messages, isLoading, allSessions } = useSelector((state) => state.shopChat);
+  const { sessionId, messages, isLoading, allSessions, sessionContext } = useSelector((state) => state.shopChat);
   const scrollRef = useRef(null);
 
   // Check if current session is closed
@@ -22,10 +22,14 @@ const ChatWidget = () => {
   const isClosed = currentSession?.status === 'closed';
 
   useEffect(() => {
-    if (isOpen && !sessionId && user?.id) {
-      dispatch(startChatSession(user.id));
+    if (isOpen && !sessionId) {
+      dispatch(startChatSession({
+        customer_id: user?.id || null,
+        session_token: localStorage.getItem('chat_token') || undefined,
+        context: sessionContext || undefined
+      }));
     }
-  }, [isOpen, sessionId, user?.id, dispatch]);
+  }, [isOpen, sessionId, user?.id, sessionContext, dispatch]);
 
   useEffect(() => {
     if (sessionId) {

@@ -9,7 +9,9 @@ const initialState = {
   error: null,
 
   // State untuk alur belanja (Shop)
-  token: null, // Untuk Midtrans Snap
+  paymentMode: null, // 'midtrans' or 'manual'
+  paymentInstructions: null, // instructions from backend
+  token: null, // For backward compatibility / Snap
   redirectUrl: null,
   orderId: null, // ID pesanan yang baru dibuat
   userOrderList: [], // Daftar pesanan untuk satu pengguna
@@ -37,7 +39,7 @@ export const createNewOrder = createAsyncThunk(
   'orders/createNew',
   async (orderData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/shop/order/create', orderData);
+      const response = await api.post('/orders/create', orderData);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data.message || 'Gagal membuat pesanan');
@@ -49,7 +51,7 @@ export const getAllOrdersByUserId = createAsyncThunk(
   'orders/fetchAllByUser',
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/shop/order/list/${userId}`);
+      const response = await api.get(`/orders/user/${userId}`);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || 'Gagal mengambil riwayat pesanan');
@@ -61,7 +63,7 @@ export const verifyPaymentStatus = createAsyncThunk(
   'orders/verifyPaymentStatus',
   async (orderId, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/shop/order/details/${orderId}`);
+      const response = await api.get(`/orders/${orderId}`);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || 'Gagal memverifikasi pembayaran');
@@ -69,16 +71,12 @@ export const verifyPaymentStatus = createAsyncThunk(
   }
 );
 
-// =================================================================
-// THUNKS UNTUK ADMIN
-// =================================================================
-
 export const getAllOrdersForAdmin = createAsyncThunk(
   'orders/fetchAllForAdmin',
-  async ({ page = 1, limit = 10, status = '' }, { rejectWithValue }) => {
+  async ({ status = '' }, { rejectWithValue }) => {
     try {
-      const response = await api.get('/admin/orders/get', {
-        params: { page, limit, status },
+      const response = await api.get('/orders/admin/all', {
+        params: { status },
       });
       return response.data;
     } catch (err) {
@@ -91,7 +89,7 @@ export const updateOrderStatus = createAsyncThunk(
   'orders/updateStatus',
   async ({ id, orderStatus }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/admin/orders/update/${id}`, { orderStatus });
+      const response = await api.put(`/orders/admin/update/${id}`, { orderStatus });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || 'Gagal memperbarui status');
@@ -103,7 +101,7 @@ export const fetchOrderStats = createAsyncThunk(
   'orders/fetchStats',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/admin/orders/stats');
+      const response = await api.get('/orders/admin/stats');
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || 'Gagal mengambil statistik');
@@ -111,16 +109,11 @@ export const fetchOrderStats = createAsyncThunk(
   }
 );
 
-// =================================================================
-// THUNK BERSAMA (SHARED)
-// =================================================================
-
 export const getOrderDetails = createAsyncThunk(
   'orders/fetchDetails',
-  async ({ id, isAdmin = false }, { rejectWithValue }) => {
+  async ({ id }, { rejectWithValue }) => {
     try {
-      const url = isAdmin ? `/admin/orders/details/${id}` : `/shop/order/details/${id}`;
-      const response = await api.get(url);
+      const response = await api.get(`/orders/${id}`);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || 'Gagal mengambil detail pesanan');
@@ -132,7 +125,7 @@ export const regenerateSnapToken = createAsyncThunk(
   'orders/regenerateSnapToken',
   async (orderId, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/shop/order/${orderId}/regenerate-token`);
+      const response = await api.post(`/orders/${orderId}/regenerate-token`);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || 'Gagal regenerate Snap token');
@@ -164,11 +157,15 @@ const orderSlice = createSlice({
       // CREATE NEW ORDER (SHOP)
       .addCase(createNewOrder.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.token = action.payload.token;
-        state.redirectUrl = action.payload.redirect_url;
-        state.orderId = action.payload.orderId;
-        localStorage.setItem('sessionId', action.payload.userId);
-        sessionStorage.setItem('currentOrderId', action.payload.orderId);
+        state.orderId = action.payload.data?.orderId;
+        state.paymentMode = action.payload.data?.paymentMode;
+        state.paymentInstructions = action.payload.data?.instructions;
+        
+        // Backward compatibility
+        state.token = action.payload.data?.instructions?.snapToken;
+        state.redirectUrl = action.payload.data?.instructions?.redirectUrl;
+        
+        sessionStorage.setItem('currentOrderId', action.payload.data?.orderId);
       })
       // GET ORDERS BY USER (SHOP)
       .addCase(getAllOrdersByUserId.fulfilled, (state, action) => {
@@ -196,7 +193,8 @@ const orderSlice = createSlice({
         state.orderDetails = action.payload.data;
       })
       .addCase(regenerateSnapToken.fulfilled, (state, action) => {
-        state.token = action.payload.token; // Simpan token baru di Redux
+        state.token = action.payload.data?.token;
+        state.redirectUrl = action.payload.data?.redirectUrl;
         state.isLoading = false;
       })
       // UPDATE STATUS (ADMIN)

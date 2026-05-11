@@ -4,17 +4,25 @@ import api from "../../utils/axios";
 const initialState = {
   isLoading: false,
   sessionId: null,
+  sessionContext: null,   // { type, id, title, url } — set at session creation
   messages: [],
-  allSessions: [], // for admin/manager
+  allSessions: [],
   unreadCount: 0,
 };
 
 export const startChatSession = createAsyncThunk(
   "/chat/startChatSession",
-  async (customer_id) => {
+  async ({ customer_id, session_token, context } = {}) => {
+    const payload = { customer_id, session_token };
+
+    // Only attach context if it's a meaningful type (not general)
+    if (context?.type && context.type !== 'general') {
+      payload.context = context;
+    }
+
     const response = await api.post(
-      `/shop/chat/start`,
-      { customer_id }
+      `/chat/start`,
+      payload
     );
     return response.data;
   }
@@ -24,7 +32,7 @@ export const sendMessage = createAsyncThunk(
   "/chat/sendMessage",
   async (messageData) => {
     const response = await api.post(
-      `/shop/chat/message`,
+      `/chat/message`,
       messageData
     );
     return response.data;
@@ -35,7 +43,7 @@ export const getChatMessages = createAsyncThunk(
   "/chat/getChatMessages",
   async (sessionId) => {
     const response = await api.get(
-      `/shop/chat/messages/${sessionId}`
+      `/chat/messages/${sessionId}`
     );
     return response.data;
   }
@@ -45,7 +53,7 @@ export const getAllSessions = createAsyncThunk(
   "/chat/getAllSessions",
   async () => {
     const response = await api.get(
-      `/shop/chat/sessions`
+      `/chat/sessions`
     );
     return response.data;
   }
@@ -55,7 +63,7 @@ export const adminReplyMessage = createAsyncThunk(
   "/chat/adminReplyMessage",
   async (replyData) => {
     const response = await api.post(
-      `/shop/chat/reply`,
+      `/chat/reply`,
       replyData
     );
     return response.data;
@@ -66,7 +74,7 @@ export const closeSession = createAsyncThunk(
   "/chat/closeSession",
   async (sessionId) => {
     const response = await api.put(
-      `/shop/chat/session/${sessionId}/close`
+      `/chat/session/${sessionId}/close`
     );
     return response.data;
   }
@@ -76,7 +84,7 @@ export const getUnreadCount = createAsyncThunk(
   "/chat/getUnreadCount",
   async () => {
     const response = await api.get(
-      `/shop/chat/unread-count`
+      `/chat/unread-count`
     );
     return response.data;
   }
@@ -95,6 +103,9 @@ const chatSlice = createSlice({
     setSessionId: (state, action) => {
       state.sessionId = action.payload;
     },
+    setChatContext: (state, action) => {
+      state.sessionContext = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -103,7 +114,8 @@ const chatSlice = createSlice({
       })
       .addCase(startChatSession.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.sessionId = action.payload.data.id;
+        state.sessionId = action.payload.data?.sessionId || action.payload.data?.id;
+        state.sessionContext = action.payload.data?.context || null;
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         if (action.payload?.data) {
@@ -125,5 +137,5 @@ const chatSlice = createSlice({
   },
 });
 
-export const { addMessage, setSessionId } = chatSlice.actions;
+export const { addMessage, setSessionId, setChatContext } = chatSlice.actions;
 export default chatSlice.reducer;
