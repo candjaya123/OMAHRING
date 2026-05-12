@@ -6,6 +6,17 @@ class SettingsRepository {
   async get() {
     const { data, error } = await supabase
       .from('store_settings')
+      .select('store_name, store_service_fee, payment_mode, qris_image_url, bank_accounts, origin_area_id')
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getWithSecrets() {
+    const { data, error } = await supabase
+      .from('store_settings')
       .select('*')
       .limit(1)
       .maybeSingle();

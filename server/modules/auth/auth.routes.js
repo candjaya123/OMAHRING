@@ -11,6 +11,6 @@ router.post('/login', validate(loginSchema), authController.login);
 router.post('/logout', authController.logout);
 router.get('/check-auth', authenticate, authController.checkAuth);
 router.get('/check-email/:email', authController.checkEmail);
-router.post('/upgrade-to-member', validate(upgradeSchema), authController.upgradeToMember);
+router.post('/upgrade-to-member', authenticate, validate(upgradeSchema), authController.upgradeToMember);
 
 module.exports = router;

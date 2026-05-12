@@ -1,18 +1,24 @@
+# =========================
+# PRODUCTION DOCKERFILE
+# =========================
 FROM node:20-alpine
+
+# Set production environment
+ENV NODE_ENV=production
+ENV PORT=5005
 
 WORKDIR /app
 
-# Copy hanya dependency
+# Install dependencies first (better caching)
 COPY package*.json ./
-
-# Install production only + clean cache
 RUN npm install --omit=dev && npm cache clean --force
 
-# Copy source
+# Copy source code
 COPY . .
 
-# Pakai user non-root
+# Security: Use non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN chown -R appuser:appgroup /app
 USER appuser
 
 EXPOSE 5005

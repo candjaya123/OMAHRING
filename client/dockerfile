@@ -5,7 +5,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# ✅ TAMBAHAN (ini inti fix)
+# Build arguments for Vite environment variables
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
 ARG VITE_BACKEND_URI
@@ -15,11 +15,9 @@ ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 ENV VITE_BACKEND_URI=$VITE_BACKEND_URI
 
 COPY package*.json ./
-
 RUN npm ci && npm cache clean --force
 
 COPY . .
-
 RUN npm run build
 
 # =========================
@@ -29,10 +27,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-RUN npm install serve && npm cache clean --force
+RUN npm install -g serve && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["npx", "serve", "-s", "dist", "-l", "3000"]
+# Use serve for simple hosting
+CMD ["serve", "-s", "dist", "-l", "3000"]

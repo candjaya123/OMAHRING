@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useTranslation } from 'react-i18next';
+import { usePageContent } from '@/hooks/usePageContent';
 
 // Varian animasi untuk section
 const sectionVariants = {
@@ -37,6 +38,7 @@ function ShoppingHome() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { getText } = usePageContent('homepage');
 
   const [communityForm, setCommunityForm] = useState({ name: '', email: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,7 +191,7 @@ function ShoppingHome() {
                 <Sparkles className="w-4 h-4 fill-orange-400" /> {t('sections.membership')}
               </div>
               <h2 className="text-5xl md:text-7xl font-serif font-bold text-white leading-[1.1] tracking-tight">
-                {t('membership.benefits')}
+                {getText('membership_title', t('membership.benefits'))}
               </h2>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-12 pt-4">
@@ -246,7 +248,7 @@ function ShoppingHome() {
           <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
             <div className="max-w-2xl space-y-4">
               <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 tracking-tight">
-                {t('sections.education')}
+                {getText('education_title', t('sections.education'))}
               </h2>
             </div>
           </div>

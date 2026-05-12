@@ -6,6 +6,7 @@ class AnalyticsController {
       const stats = await analyticsService.getDashboardStats();
       res.status(200).json({ success: true, data: stats });
     } catch (error) {
+      console.error('[AnalyticsController.getDashboardStats] Error:', error.message);
       next(error);
     }
   }

@@ -10,6 +10,7 @@ class BirdsController {
         data: bird
       });
     } catch (error) {
+      console.error('[BirdsController.registerBird] Error:', error.message);
       next(error);
     }
   }
@@ -22,6 +23,7 @@ class BirdsController {
         data: bird
       });
     } catch (error) {
+      console.error('[BirdsController.getBirdDetails] Error:', error.message);
       next(error);
     }
   }
@@ -34,6 +36,7 @@ class BirdsController {
         data: birds
       });
     } catch (error) {
+      console.error('[BirdsController.getMemberBirds] Error:', error.message);
       next(error);
     }
   }
@@ -46,6 +49,7 @@ class BirdsController {
         message: 'Bird profile deleted successfully'
       });
     } catch (error) {
+      console.error('[BirdsController.deleteBird] Error:', error.message);
       next(error);
     }
   }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, Star, Users, Award, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { usePageContent } from '@/hooks/usePageContent';
 
 const defaultHeroImages = [
   {
@@ -27,7 +28,9 @@ const defaultHeroImages = [
   },
 ];
 
+
 export const HomeHero = () => {
+  const { getText } = usePageContent('homepage');
   const { featureImageList } = useSelector((state) => state.commonFeature);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -128,7 +131,7 @@ export const HomeHero = () => {
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
               <span className="block text-white drop-shadow-lg">Omahring</span>
               <span className="block text-orange-400 text-2xl md:text-3xl lg:text-4xl font-medium mt-2">
-                {heroImages[currentSlide]?.title}
+                {currentSlide === 0 ? getText('hero_title', heroImages[currentSlide]?.title) : heroImages[currentSlide]?.title}
               </span>
             </h1>
 

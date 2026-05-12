@@ -1,4 +1,4 @@
-const supabase = require('../../shared/supabase.client');
+const supabase = require('../../config/supabase');
 
 const create = async (data) => {
   const { data: record, error } = await supabase

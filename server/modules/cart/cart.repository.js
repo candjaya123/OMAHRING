@@ -129,6 +129,17 @@ class CartRepository {
     if (error) throw error;
     return data;
   }
+
+  async getCartWithItems(cartId) {
+    const { data, error } = await supabase
+      .from('carts')
+      .select('*, cart_items(*)')
+      .eq('id', cartId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
 }
 
 module.exports = new CartRepository();

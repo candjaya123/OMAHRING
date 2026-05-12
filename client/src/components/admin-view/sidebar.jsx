@@ -70,6 +70,13 @@ const adminSidebarMenuItems = [
     roles: ['admin', 'manager'],
   },
   {
+    id: 'page-contents',
+    label: 'Konten Halaman',
+    path: '/admin/page-contents',
+    icon: <FileText size={20} />,
+    roles: ['admin', 'manager'],
+  },
+  {
     id: 'chat',
     label: 'Live Chat',
     path: '/admin/chat',

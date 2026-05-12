@@ -3,11 +3,11 @@ const paymentRecordsRepository = require('../../modules/orders/payment-records.r
 const settingsService = require('../../modules/settings/settings.service');
 
 const getMidtransSnap = async () => {
-  const settings = await settingsService.getSettings();
+  const settings = await settingsService.getInternalSettings();
   return new midtransClient.Snap({
     isProduction: settings.midtrans_is_production || false,
-    serverKey: process.env.MIDTRANS_SERVER_KEY, // Preferred from env for security
-    clientKey: process.env.MIDTRANS_CLIENT_KEY
+    serverKey: settings.midtrans_server_key || process.env.MIDTRANS_SERVER_KEY,
+    clientKey: settings.midtrans_client_key || process.env.MIDTRANS_CLIENT_KEY
   });
 };
 

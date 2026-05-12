@@ -9,12 +9,13 @@ const register = async (req, res, next) => {
       message: 'Registration successful',
       data: {
         id: user.id,
-        userName: user.user_name,
+        user_name: user.user_name,
         email: user.email,
         role: user.role,
       },
     });
   } catch (error) {
+    console.error('[AuthController.register] Error:', error.message);
     next(error);
   }
 };
@@ -36,12 +37,13 @@ const login = async (req, res, next) => {
       message: 'Logged in successfully',
       data: {
         id: user.id,
-        userName: user.user_name,
+        user_name: user.user_name,
         email: user.email,
         role: user.role,
       },
     });
   } catch (error) {
+    console.error('[AuthController.login] Error:', error.message);
     next(error);
   }
 };
@@ -58,7 +60,7 @@ const checkAuth = async (req, res) => {
     success: true,
     data: {
       id: req.user.id,
-      userName: req.user.user_name || req.user.userName,
+      user_name: req.user.user_name,
       email: req.user.email,
       role: req.user.role,
     },
@@ -73,6 +75,7 @@ const checkEmail = async (req, res, next) => {
       data: { exists },
     });
   } catch (error) {
+    console.error('[AuthController.checkEmail] Error:', error.message);
     next(error);
   }
 };
@@ -89,6 +92,7 @@ const upgradeToMember = async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.error('[AuthController.upgradeToMember] Error:', error.message);
     next(error);
   }
 };

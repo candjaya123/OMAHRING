@@ -37,8 +37,7 @@ import PaymentPendingPage from './pages/shopping-view/payment-pending';
 import { ToastContainer } from 'react-toastify';
 import ArticleDetailPage from './pages/shopping-view/article-detail';
 import PaymentInstructionPage from './pages/shopping-view/payment-instruction';
-
-function App() {
+import AdminPageContents from './pages/admin-view/page-contents';
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
@@ -107,6 +106,7 @@ function App() {
           {/* 🔹 2. Tambahkan rute baru di sini */}
           <Route path="features" element={<AdminFeatures />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="page-contents" element={<AdminPageContents />} />
           <Route path="chat" element={<AdminChat />} />
           <Route path="chat-logs" element={<AdminChatLogs />} />
         </Route>

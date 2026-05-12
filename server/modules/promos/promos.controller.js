@@ -6,6 +6,7 @@ class PromosController {
       const promos = await promosService.getAllPromos();
       res.status(200).json({ success: true, data: promos });
     } catch (error) {
+      console.error('[PromosController.getAllPromos] Error:', error.message);
       next(error);
     }
   }
@@ -15,6 +16,7 @@ class PromosController {
       const promo = await promosService.createPromo(req.body);
       res.status(201).json({ success: true, message: 'Promo created successfully', data: promo });
     } catch (error) {
+      console.error('[PromosController.addPromo] Error:', error.message);
       next(error);
     }
   }
@@ -24,6 +26,7 @@ class PromosController {
       const promo = await promosService.updatePromo(req.params.id, req.body);
       res.status(200).json({ success: true, message: 'Promo updated successfully', data: promo });
     } catch (error) {
+      console.error('[PromosController.updatePromo] Error:', error.message);
       next(error);
     }
   }
@@ -33,6 +36,7 @@ class PromosController {
       await promosService.deletePromo(req.params.id);
       res.status(200).json({ success: true, message: 'Promo deleted successfully' });
     } catch (error) {
+      console.error('[PromosController.deletePromo] Error:', error.message);
       next(error);
     }
   }
@@ -43,6 +47,7 @@ class PromosController {
       const result = await promosService.validatePromo(code, cartTotal);
       res.status(200).json({ success: true, data: result });
     } catch (error) {
+      console.error('[PromosController.validatePromo] Error:', error.message);
       next(error);
     }
   }

@@ -13,6 +13,10 @@ class SettingsService {
     return settings;
   }
 
+  async getInternalSettings() {
+    return await settingsRepository.getWithSecrets();
+  }
+
   async updateSettings(data) {
     return await settingsRepository.update(data);
   }

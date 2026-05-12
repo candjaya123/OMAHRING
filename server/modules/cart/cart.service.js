@@ -144,18 +144,13 @@ class CartService {
   }
 
   async refreshCartTotal(cartId) {
-    // In a real repo, we might want a more efficient way to calculate total
-    const cart = await supabase // Using direct supabase or a special repo method
-      .from('carts')
-      .select('*, cart_items(*)')
-      .eq('id', cartId)
-      .single();
+    const cart = await cartRepository.getCartWithItems(cartId);
     
-    const total = (cart.data.cart_items || []).reduce((acc, item) => acc + (item.quantity * item.unit_price), 0);
+    const total = (cart.cart_items || []).reduce((acc, item) => acc + (item.quantity * item.unit_price), 0);
     await cartRepository.updateCartTotal(cartId, total);
     
     // Return full cart object with items
-    return await cartRepository.findByUserId(cart.data.user_id) || await cartRepository.findBySessionId(cart.data.session_id);
+    return await cartRepository.findByUserId(cart.user_id) || await cartRepository.findBySessionId(cart.session_id);
   }
 }
 

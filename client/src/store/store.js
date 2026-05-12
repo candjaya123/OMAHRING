@@ -9,6 +9,7 @@ import adminAnalyticsSlice from './admin/analytics-slice';
 import adminArticleSlice from './admin/article-slice'; // 🔹 Impor slice artikel
 import adminCategorySlice from './admin/category-slice'; // 🔹 Impor slice kategori
 
+import adminPageContentsSlice from './admin/page-contents-slice';
 import shopProductsSlice from './shop/products-slice';
 import shopCartSlice from './shop/cart-slice';
 import shopAddressSlice from './shop/address-slice';
@@ -33,6 +34,7 @@ const store = configureStore({
     adminAnalytics: adminAnalyticsSlice,
     adminArticle: adminArticleSlice, // 🔹 Tambahkan reducer artikel
     adminCategory: adminCategorySlice, // 🔹 Tambahkan reducer kategori
+    adminPageContents: adminPageContentsSlice,
 
     shopProducts: shopProductsSlice,
     shopCart: shopCartSlice,

@@ -18,6 +18,7 @@ class CartController {
         data: cart
       });
     } catch (error) {
+      console.error('[CartController.getCart] Error:', error.message);
       next(error);
     }
   }
@@ -32,6 +33,7 @@ class CartController {
         data: cart
       });
     } catch (error) {
+      console.error('[CartController.addToCart] Error:', error.message);
       next(error);
     }
   }
@@ -46,6 +48,7 @@ class CartController {
         data: cart
       });
     } catch (error) {
+      console.error('[CartController.updateQuantity] Error:', error.message);
       next(error);
     }
   }
@@ -63,6 +66,7 @@ class CartController {
         data: cart
       });
     } catch (error) {
+      console.error('[CartController.removeItem] Error:', error.message);
       next(error);
     }
   }
@@ -77,6 +81,7 @@ class CartController {
         data: cart
       });
     } catch (error) {
+      console.error('[CartController.mergeCart] Error:', error.message);
       next(error);
     }
   }

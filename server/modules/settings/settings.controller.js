@@ -6,6 +6,7 @@ class SettingsController {
       const settings = await settingsService.getSettings();
       res.status(200).json({ success: true, data: settings });
     } catch (error) {
+      console.error('[SettingsController.getSettings] Error:', error.message);
       next(error);
     }
   }
@@ -15,6 +16,7 @@ class SettingsController {
       const settings = await settingsService.updateSettings(req.body);
       res.status(200).json({ success: true, message: 'Settings updated successfully', data: settings });
     } catch (error) {
+      console.error('[SettingsController.updateSettings] Error:', error.message);
       next(error);
     }
   }

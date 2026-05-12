@@ -1,49 +1,40 @@
-# 🏠 OMAHRING - Fullstack E-commerce Platform
+# 🏠 OMAHRING - Fullstack E-commerce Platform (Final Release)
 
-OMAHRING adalah platform e-commerce modern yang dibangun khusus untuk mengelola penjualan produk (seperti Salis/Sepeda Listrik) dengan fitur manajemen yang lengkap, mulai dari inventaris produk, artikel/blog, hingga sistem pembayaran terintegrasi.
-
-Proyek ini menggunakan arsitektur **Client-Server** dengan **Supabase** sebagai database utama dan **Cloudinary** untuk manajemen media.
+OMAHRING adalah platform e-commerce modern yang dibangun khusus untuk mengelola penjualan produk dengan fitur manajemen konten dinamis (CMS). Sistem ini dirancang menggunakan arsitektur **Layered Monolith** yang bersih, aman, dan sangat terstruktur.
 
 ---
 
 ## 🚀 Fitur Utama
 
 ### 🛒 Sisi Pelanggan (Shopping View)
-- **Home & Listing**: Tampilan produk yang dinamis dengan filter kategori dan pencarian.
-- **Detail Produk**: Deskripsi lengkap, galeri gambar, varian produk, dan review pelanggan.
-- **Keranjang & Checkout**: Sistem manajemen keranjang serta proses checkout yang aman.
-- **Pembayaran Terintegrasi**: Mendukung **Midtrans** (Lokal Indonesia) dan **PayPal**.
-- **Blog & Membership**: Halaman artikel untuk edukasi pelanggan dan sistem keanggotaan.
-- **Akun Pengguna**: Riwayat pesanan, manajemen alamat, dan profil.
+- **CMS Powered Content**: Banner hero dan bagian teks dikontrol sepenuhnya via dashboard.
+- **Normalized Catalog**: Filter kategori yang cepat menggunakan relasi tabel PostgreSQL.
+- **Dual Payment Flow**: Mendukung otomatisasi **Midtrans** dan **Manual Transfer** dengan verifikasi bukti bayar.
+- **Membership**: Sistem keanggotaan terintegrasi dengan akses artikel edukasi eksklusif.
 
 ### 🛡️ Sisi Admin (Admin Dashboard)
-- **Dashboard Analytics**: Ringkasan performa penjualan dan data pelanggan.
-- **Manajemen Produk**: CRUD produk dengan dukungan varian, stok, dan kategori dinamis.
-- **Manajemen Promo**: Sistem kode kupon/diskon untuk meningkatkan penjualan.
-- **Manajemen Artikel**: Editor blog (CMS) terintegrasi menggunakan React Quill.
-- **Manajemen Pesanan**: Pelacakan status pemesanan dari *pending* hingga *dikirim*.
-- **Manajemen Staff**: Pengaturan hak akses (Admin/Manager).
-- **Pengaturan Sistem**: Konfigurasi global aplikasi.
+- **CMS Dashboard**: Editor konten visual untuk mengelola teks dan gambar tanpa deployment.
+- **Order Management**: Panel verifikasi pembayaran manual dan pelacakan status pesanan.
+- **Inventory Control**: Manajemen varian produk (Size/Color) dengan sinkronisasi stok otomatis.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Technical Architecture
 
-### Frontend (Client)
-- **Framework**: React.js (Vite)
-- **State Management**: Redux Toolkit
-- **Styling**: Tailwind CSS & Shadcn UI
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **HTTP Client**: Axios
+### Arsitektur Backend (Layered Monolith)
+Aplikasi menggunakan pola **Service-Repository** untuk pemisahan logika yang ketat:
+1. **Routes**: Definisi endpoint dan binding middleware.
+2. **Controllers**: Menangani request/response HTTP dan koordinasi service.
+3. **Services**: Berisi logika bisnis inti (e.g., kalkulasi fee, integrasi payment).
+4. **Repositories**: Berhubungan langsung dengan Supabase/DB, memisahkan query dari logika bisnis.
 
-### Backend (Server)
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: Supabase (PostgreSQL)
-- **Auth**: JWT (JSON Web Token) & BCryptJS
-- **File Upload**: Cloudinary SDK & Multer
-- **Payment Gateway**: Midtrans SDK & PayPal SDK
+### Keamanan (Security)
+- **Authentication**: JWT berbasis HttpOnly Cookie untuk mencegah serangan XSS.
+- **Authorization (RBAC)**: Middleware `authorizeRoles` membatasi akses endpoint berdasarkan role (`admin`, `manager`, `member`, `user`).
+- **Data Integrity**: Validasi input di sisi server menggunakan **Zod Schema** sebelum data masuk ke database.
+
+### Strategi Pembayaran (Strategy Pattern)
+Sistem menggunakan **Strategy Pattern** untuk menangani berbagai mode pembayaran secara fleksibel, memungkinkan penambahan provider baru tanpa merusak logika pesanan yang sudah ada.
 
 ---
 
@@ -51,95 +42,69 @@ Proyek ini menggunakan arsitektur **Client-Server** dengan **Supabase** sebagai 
 
 ```text
 OMAHRING/
-├── client/              # Frontend (React App)
+├── client/              # Frontend (React + Vite)
 │   ├── src/
-│   │   ├── components/  # Komponen UI (Shared, Admin, Shop)
-│   │   ├── pages/       # Halaman utama aplikasi
-│   │   ├── store/       # Redux Slices & Logic
-│   │   └── lib/         # Konfigurasi utilitas (Axios, utils)
-│   └── public/          # Aset publik
-├── server/              # Backend (Node.js API)
-│   ├── config/          # Koneksi DB (Supabase/Cloudinary)
-│   ├── controllers/     # Logika bisnis per entitas
-│   ├── helpers/         # Fungsi bantuan (image upload, dll)
-│   ├── middleware/      # Auth & Error validation
-│   ├── models/          # (Legacy/SQL Reference)
-│   └── routes/          # API Endpoints
-├── nginx/               # Konfigurasi proxy server untuk deployment
-└── schema.sql           # Definisi tabel database (Supabase)
+│   │   ├── hooks/       # usePageContent (CMS integration hook)
+│   │   ├── store/       # Redux Toolkit (Modular Slices)
+│   │   └── components/  # Atomic Design (Shared, Admin, Shop)
+├── server/              # Backend (Node.js + Express)
+│   ├── modules/         # Domain-driven modules (Auth, Products, CMS)
+│   ├── shared/          # Shared Services (Payment Strategies, Cloudinary)
+│   ├── middleware/      # Global error handlers & security guards
+│   └── config/          # Supabase & Environment variables
+├── docs/                # Dokumentasi Arsitektur (ADR) & API Contract
+└── migrations/          # SQL Source of Truth (Super Schema)
 ```
 
 ---
 
 ## ⚙️ Persiapan & Instalasi
 
-### 1. Prasyarat
-- Node.js (v18+)
-- Akun Supabase
-- Akun Cloudinary
-- Akun Midtrans (Sandbox/Production)
+### 1. Database Initialization
+Eksekusi file berikut di SQL Editor Supabase:
+`migrations/20260512_super_schema.sql`
+*Script ini akan membuat tabel, index, RLS, dan seeding data awal.*
 
-### 2. Konfigurasi Environment Variables
-
-Buat file `.env` di dalam folder `server/`:
+### 2. Konfigurasi Backend (`server/.env`)
 ```env
 PORT=5005
-CLIENT_URL=http://localhost:3000
-FRONTEND_URL=http://localhost:3000
+NODE_ENV=production
+JWT_SECRET=your_secret_string
 
-# Database
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_or_service_key
+# Supabase
+SUPABASE_URL=https://your-id.supabase.co
+SUPABASE_KEY=your-service-role-key
 
-# Media
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# Payment
-MIDTRANS_SERVER_KEY=your_server_key
-MIDTRANS_CLIENT_KEY=your_client_key
+# Media (Cloudinary)
+CLOUDINARY_CLOUD_NAME=your_name
+CLOUDINARY_API_KEY=your_key
+CLOUDINARY_API_SECRET=your_secret
 ```
 
-### 3. Setup Database
-Eksekusi file `schema.sql` di SQL Editor Supabase Anda untuk membuat tabel yang diperlukan (`users`, `products`, `orders`, `carts`, `promos`, `reviews`).
-
-### 4. Instalasi & Menjalankan
-
-**Backend:**
-```bash
-cd server
-npm install
-npm run dev
-```
-
-**Client:**
-```bash
-cd client
-npm install
-npm run dev
+### 3. Konfigurasi Frontend (`client/.env`)
+```env
+VITE_SUPABASE_URL=https://your-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_BACKEND_URI=http://localhost:5005/api
 ```
 
 ---
 
-## 🚢 Deployment (Docker)
+## 📝 Developer Guidelines
 
-Proyek ini sudah dilengkapi dengan Dockerfile untuk client dan server.
+### CMS Usage (`usePageContent` hook)
+Untuk mengambil konten dinamis di frontend, gunakan hook yang sudah disediakan:
+```javascript
+const { getText, getImage } = usePageContent('homepage');
+// Usage: <h1>{getText('hero_title', 'Fallback Title')}</h1>
+```
 
-1. Bangun image:
-   ```bash
-   docker build -t omahring-client ./client
-   docker build -t omahring-server ./server
-   ```
-2. Gunakan `nginx/` untuk mengatur reverse proxy jika diperlukan.
-
----
-
-## 📝 Catatan untuk Developer Selanjutnya
-- **Kategori Dinamis**: Kategori produk dikelola secara dinamis melalui UI Admin, tersimpan dalam format JSONB di database.
-- **Varian Produk**: Mendukung multiple variants per produk (Unit, Warna, dsb). Pastikan skema `attributes` dan `variants` sinkron antara frontend dan backend.
-- **Keamanan**: Gunakan `SERVICE_ROLE_KEY` di server `.env` untuk mengizinkan backend melakukan operasi yang melewati kebijakan RLS Supabase jika diperlukan.
+### Database Normalization Rules
+1. **Dilarang** menyimpan data entitas bisnis utama dalam kolom JSONB.
+2. Gunakan **Snake Case** untuk semua penamaan kolom dan properti payload API.
+3. Selalu tambahkan kolom `deleted_at` untuk fitur soft-delete pada entitas utama.
 
 ---
 
 Dibuat dengan ❤️ untuk **Omahring**.
+*Last Update: 12 Mei 2026*

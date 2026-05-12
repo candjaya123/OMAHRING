@@ -17,6 +17,7 @@ class OrdersController {
           orderId: error.orderId
         });
       }
+      console.error('[OrdersController.createOrder] Error:', error.message);
       next(error);
     }
   }
@@ -26,6 +27,7 @@ class OrdersController {
       const orders = await ordersService.getUserOrders(req.params.userId);
       res.status(200).json({ success: true, data: orders });
     } catch (error) {
+      console.error('[OrdersController.getUserOrders] Error:', error.message);
       next(error);
     }
   }
@@ -35,6 +37,7 @@ class OrdersController {
       const order = await ordersService.getOrderDetails(req.params.id);
       res.status(200).json({ success: true, data: order });
     } catch (error) {
+      console.error('[OrdersController.getOrderDetails] Error:', error.message);
       next(error);
     }
   }
@@ -44,7 +47,7 @@ class OrdersController {
       await ordersService.handleWebhook(req.body);
       res.status(200).send('OK');
     } catch (error) {
-      console.error('Webhook Error:', error);
+      console.error('[OrdersController.handleWebhook] Error:', error.message);
       res.status(500).send('Error');
     }
   }
@@ -54,6 +57,7 @@ class OrdersController {
       const orders = await ordersService.getAllOrders(req.query);
       res.status(200).json({ success: true, data: orders });
     } catch (error) {
+      console.error('[OrdersController.getAllOrders] Error:', error.message);
       next(error);
     }
   }
@@ -63,15 +67,18 @@ class OrdersController {
       const result = await ordersService.regenerateSnapToken(req.params.id);
       res.status(200).json({ success: true, data: result });
     } catch (error) {
+      console.error('[OrdersController.regenerateSnapToken] Error:', error.message);
       next(error);
     }
   }
 
   async updateOrderStatus(req, res, next) {
     try {
-      const order = await ordersService.updateOrderStatus(req.params.id, req.body.orderStatus);
+      const { order_status } = req.body;
+      const order = await ordersService.updateOrderStatus(req.params.id, order_status);
       res.status(200).json({ success: true, message: 'Order status updated', data: order });
     } catch (error) {
+      console.error('[OrdersController.updateOrderStatus] Error:', error.message);
       next(error);
     }
   }
@@ -81,6 +88,7 @@ class OrdersController {
       const stats = await ordersService.getOrderStats();
       res.status(200).json({ success: true, data: stats });
     } catch (error) {
+      console.error('[OrdersController.getOrderStats] Error:', error.message);
       next(error);
     }
   }

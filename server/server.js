@@ -4,8 +4,7 @@ const cors = require('cors');
 const env = require('./config/env');
 const errorMiddleware = require('./middleware/error.middleware');
 
-// Routes (Legacy - will be migrated to modules/)
-// Modules (Target Architecture)
+// --- Domain Modules (Target Architecture) ---
 const authRouter = require('./modules/auth/auth.routes');
 const productsRouter = require('./modules/products/products.routes');
 const cartRouter = require('./modules/cart/cart.routes');
@@ -17,16 +16,7 @@ const promosRouter = require('./modules/promos/promos.routes');
 const settingsRouter = require('./modules/settings/settings.routes');
 const membersRouter = require('./modules/members/members.routes');
 const ordersRouter = require('./modules/orders/orders.routes');
-
-// Legacy Routes (Pending Refactor)
-const adminStaffRouter = require('./routes/admin/staff-routes');
-const adminCategoryRouter = require('./routes/admin/category-routes');
-const shopAddressRouter = require('./routes/shop/address-routes');
-const shopSearchRouter = require('./routes/shop/search-routes');
-const shopReviewRouter = require('./routes/shop/review-routes');
-const shopShippingRouter = require('./routes/shop/shipping-routes');
-const shopCommonRouter = require('./routes/shop/common-routes');
-const commonFeatureRouter = require('./routes/common/feature-routes');
+const pageContentsRouter = require('./modules/page-contents/page-contents.routes');
 
 const app = express();
 
@@ -53,7 +43,7 @@ app.use(
         callback(new Error('Not allowed by CORS'));
       }
     },
-    methods: ['GET', 'POST', 'DELETE', 'PUT'],
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH'],
     allowedHeaders: [
       'Content-Type',
       'Authorization',
@@ -69,10 +59,11 @@ app.use(cookieParser());
 app.use(express.json());
 
 // --- Routes ---
-// --- Routes ---
+
+// 1. Auth Module
 app.use('/api/auth', authRouter);
 
-// Domain Modules
+// 2. Domain Modules (V1)
 app.use('/api/products', productsRouter);
 app.use('/api/cart', cartRouter);
 app.use('/api/orders', ordersRouter);
@@ -83,32 +74,22 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/promos', promosRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/members', membersRouter);
+app.use('/api/page-contents', pageContentsRouter);
 
-// Admin Specific (Legacy Compatibility)
+// 3. Aliases for Legacy Compatibility
 app.use('/api/admin/products', productsRouter);
 app.use('/api/admin/articles', articlesRouter);
-app.use('/api/admin/categories', adminCategoryRouter);
 app.use('/api/admin/orders', ordersRouter);
 app.use('/api/admin/users', membersRouter);
 app.use('/api/admin/promos', promosRouter);
-app.use('/api/admin/staff', adminStaffRouter);
 app.use('/api/admin/analytics', analyticsRouter);
 app.use('/api/admin/settings', settingsRouter);
 
-// Shop Specific (Legacy Compatibility)
 app.use('/api/shop/products', productsRouter);
 app.use('/api/shop/cart', cartRouter);
-app.use('/api/shop/address', shopAddressRouter);
 app.use('/api/shop/order', ordersRouter);
-app.use('/api/shop/search', shopSearchRouter);
-app.use('/api/shop/review', shopReviewRouter);
-app.use('/api/shop/shipping', shopShippingRouter);
-app.use('/api/shop/common', shopCommonRouter);
 app.use('/api/shop/birds', birdsRouter);
 app.use('/api/shop/chat', chatRouter);
-
-// Common
-app.use('/api/common/feature', commonFeatureRouter);
 
 // --- Global Error Handler ---
 app.use(errorMiddleware);

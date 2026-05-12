@@ -7,7 +7,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const storage = new multer.MemoryStorage();
+const storage = multer.memoryStorage();
 
 async function imageUploadUtil(file) {
   const result = await cloudinary.uploader.upload(file, {

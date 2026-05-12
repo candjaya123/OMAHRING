@@ -16,7 +16,9 @@ class ProductsRepository {
     }
 
     if (filters.category) {
-      query = query.contains('category', [filters.category]);
+      query = query
+        .select('*, product_category_assignments!inner(category_id)')
+        .eq('product_category_assignments.category_id', filters.category);
     }
 
     const { data, error } = await query.order(filters.sortBy || 'created_at', { ascending: filters.ascending === 'true' });
