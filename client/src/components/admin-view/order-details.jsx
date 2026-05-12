@@ -31,14 +31,14 @@ export function AdminOrderDetailsDialog({ orderDetails, onUpdateStatus, isLoadin
   }
 
   const handleUpdateClick = () => {
-    onUpdateStatus(orderDetails._id, newStatus, trackingNumber);
+    onUpdateStatus(orderDetails.id, newStatus, trackingNumber);
   };
 
   return (
     <DialogContent className="sm:max-w-3xl">
       <DialogHeader>
         <DialogTitle>Order Details</DialogTitle>
-        <DialogDescription>Order ID: {orderDetails._id}</DialogDescription>
+        <DialogDescription>Order ID: {orderDetails.id}</DialogDescription>
       </DialogHeader>
 
       <div className="grid gap-6 py-4">

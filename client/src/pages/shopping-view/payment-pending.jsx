@@ -300,7 +300,7 @@ const PaymentPendingPage = () => {
 
         <div className="mt-6 pt-6 border-t text-center">
           <p className="text-sm text-gray-500 mb-3">
-            Order ID: <span className="font-mono font-medium">{orderDetails._id}</span>
+            Order ID: <span className="font-mono font-medium">{orderDetails.id}</span>
           </p>
           <Link to="/shop/account" className="text-blue-600 hover:text-blue-700 underline text-sm">
             Lihat Riwayat Pesanan

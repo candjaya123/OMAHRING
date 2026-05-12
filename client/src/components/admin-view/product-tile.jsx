@@ -105,7 +105,7 @@ function AdminProductTile({
         </Button>
         <Button 
           variant="destructive" 
-          onClick={() => handleDelete(product?._id)}
+          onClick={() => handleDelete(product?.id)}
           className="h-9 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-200 rounded-md text-sm font-medium shadow-none"
         >
           <Trash2 className="w-4 h-4 mr-2" /> Hapus

@@ -29,8 +29,8 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
     if (productDetails?.variants?.length > 0) {
       setSelectedVariant(productDetails.variants[0]);
     }
-    if (productDetails?._id) {
-      dispatch(getReviews(productDetails._id));
+    if (productDetails?.id) {
+      dispatch(getReviews(productDetails.id));
     }
   }, [productDetails, dispatch]);
 
@@ -51,7 +51,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
       addToCart({
         userId: user?.id || null,
         sessionId: user?.id ? null : sessionId,
-        productId: productDetails?._id,
+        productId: productDetails?.id,
         quantity: 1,
         variant: {
           name: selectedVariant.combination.join(' - '),
@@ -72,8 +72,8 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
       return;
     }
     dispatch(addReview({
-      productId: productDetails?._id,
-      userId: user._id,
+      productId: productDetails?.id,
+      userId: user.id,
       userName: user.userName,
       reviewMessage: reviewMsg,
       reviewValue: rating,
@@ -81,7 +81,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
       if (data.payload.success) {
         setRating(0);
         setReviewMsg('');
-        dispatch(getReviews(productDetails?._id));
+        dispatch(getReviews(productDetails?.id));
       }
     });
   };

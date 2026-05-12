@@ -96,7 +96,7 @@ function ShoppingCheckout() {
   useEffect(() => {
     if (addressList && addressList.length > 0 && !selectedAddressId) {
       const defaultAddress = addressList.find((addr) => addr.isDefault) || addressList[0];
-      setSelectedAddressId(defaultAddress._id);
+      setSelectedAddressId(defaultAddress.id);
       setUseNewAddress(false);
     }
   }, [addressList, selectedAddressId]);
@@ -172,7 +172,7 @@ function ShoppingCheckout() {
       if (useNewAddress) {
         destId = newAddressData.area?.split('||')[0];
       } else if (selectedAddressId) {
-        const addr = addressList.find(a => a._id === selectedAddressId);
+        const addr = addressList.find(a => a.id === selectedAddressId);
         if (addr) {
           destId = addr.city?.split('||')[0];
         }
@@ -268,7 +268,7 @@ function ShoppingCheckout() {
   const grandTotal = baseTotal + midtransFeeValue;
 
   const handleCheckout = () => {
-    if (!cartItems?._id) {
+    if (!cartItems?.id) {
       toast.toastError('Gagal', 'Keranjang tidak ditemukan.');
       return;
     }
@@ -319,7 +319,7 @@ function ShoppingCheckout() {
           notes: newAddressData.notes,
         };
       } else {
-        const selectedAddress = addressList.find((addr) => addr._id === selectedAddressId);
+        const selectedAddress = addressList.find((addr) => addr.id === selectedAddressId);
         addressInfo = {
           address: selectedAddress.address,
           city: selectedAddress.city,
@@ -334,7 +334,7 @@ function ShoppingCheckout() {
 
     const orderData = {
       userId: user?.id || localStorage.getItem('sessionId') || `guest-${Date.now()}`,
-      cartId: cartItems._id,
+      cartId: cartItems.id,
       cartItems: cartItems.items.map((item) => ({
         productId: item.productId,
         title: item.title,
@@ -504,9 +504,9 @@ function ShoppingCheckout() {
                             const displayCity = `${cityLabel}${provLabel ? `, ${provLabel}` : ''}`;
 
                             return (
-                              <div key={address._id} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                                <RadioGroupItem value={address._id} id={address._id} className="mt-1" />
-                                <Label htmlFor={address._id} className="flex-1 cursor-pointer">
+                              <div key={address.id} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                                <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
+                                <Label htmlFor={address.id} className="flex-1 cursor-pointer">
                                   <div className="font-medium">{address.address}</div>
                                   <div className="text-sm text-gray-600">{displayCity}, {address.pincode}</div>
                                   <div className="text-sm text-gray-600 flex items-center gap-1 mt-1">

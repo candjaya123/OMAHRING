@@ -22,7 +22,7 @@ function ArticleDetailPage() {
     if (currentArticle) {
       dispatch(setChatContext({
         type: 'article',
-        id: currentArticle._id || currentArticle.id,
+        id: currentArticle.id || currentArticle.id,
         title: currentArticle.title,
         url: window.location.pathname
       }));

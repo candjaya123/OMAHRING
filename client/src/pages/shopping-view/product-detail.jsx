@@ -48,7 +48,7 @@ function ProductDetailPage() {
     if (currentProduct) {
       dispatch(setChatContext({
         type: 'product',
-        id: currentProduct.id || currentProduct._id,
+        id: currentProduct.id || currentProduct.id,
         title: currentProduct.title,
         url: window.location.pathname
       }));
@@ -82,7 +82,7 @@ function ProductDetailPage() {
       const cartData = {
         userId: user?.id || null,
         sessionId: user?.id ? null : currentSessionId,
-        productId: currentProduct._id,
+        productId: currentProduct.id,
         quantity: selectedQuantity,
         variant: {
           name: selectedVariant.combination.join(' - '),

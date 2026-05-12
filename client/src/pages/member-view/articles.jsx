@@ -133,7 +133,7 @@ function MemberArticles() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-10">
         {articleList && articleList.length > 0 ? (
           articleList.map((article) => (
-            <div key={article._id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all group h-full flex flex-col">
+            <div key={article.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all group h-full flex flex-col">
               <div className="relative aspect-video overflow-hidden">
                 <img 
                   src={article.image || 'https://placehold.co/600x400?text=No+Image'} 
@@ -155,7 +155,7 @@ function MemberArticles() {
                     variant="outline" 
                     className="flex-1 rounded-lg border-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 font-bold"
                     onClick={() => {
-                      setCurrentEditedId(article._id);
+                      setCurrentEditedId(article.id);
                       setFormData(article);
                       setMedia({ images: article.image ? [article.image] : [], video: null });
                       setOpenCreateArticleDialog(true);
@@ -166,7 +166,7 @@ function MemberArticles() {
                   <Button 
                     variant="destructive" 
                     className="rounded-lg bg-red-50 hover:bg-red-500 hover:text-white text-red-500 border-none shadow-none"
-                    onClick={() => handleDelete(article._id)}
+                    onClick={() => handleDelete(article.id)}
                   >
                     <Trash className="w-4 h-4" />
                   </Button>

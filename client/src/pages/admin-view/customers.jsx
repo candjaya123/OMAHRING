@@ -108,7 +108,7 @@ function AdminCustomersView() {
                 filteredUserList.map((user) => {
                   const roleInfo = getRoleInfo(user.role);
                   return (
-                    <TableRow key={user._id}>
+                    <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.userName}</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
@@ -135,12 +135,12 @@ function AdminCustomersView() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {user.role === "user" && (
-                              <DropdownMenuItem onClick={() => handleRoleChange(user._id, 'member')}>
+                              <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'member')}>
                                 Jadikan Member
                               </DropdownMenuItem>
                             )}
                             {user.role === "member" && (
-                              <DropdownMenuItem onClick={() => handleRoleChange(user._id, 'user')}>
+                              <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'user')}>
                                 Jadikan User
                               </DropdownMenuItem>
                             )}

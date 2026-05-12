@@ -123,7 +123,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
   }
 
   function handleDeleteAddress(getCurrentAddress) {
-    dispatch(deleteAddress({ userId: user?.id, addressId: getCurrentAddress._id })).then((data) => {
+    dispatch(deleteAddress({ userId: user?.id, addressId: getCurrentAddress.id })).then((data) => {
       if (data?.payload?.success) {
         dispatch(fetchAllAddresses(user?.id));
         toast({ title: 'Address deleted successfully' });
@@ -132,7 +132,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
   }
 
   function handleEditAddress(getCurrentAddress) {
-    setCurrentEditedId(getCurrentAddress?._id);
+    setCurrentEditedId(getCurrentAddress?.id);
     const parsedCityProv = getCurrentAddress?.city?.split('||') || ["", ""];
     const cityVal = parsedCityProv[0] || "";
     const provVal = parsedCityProv[1] || "";
@@ -169,7 +169,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
 
               return (
                 <AddressCard
-                  key={singleAddressItem._id}
+                  key={singleAddressItem.id}
                   selectedId={selectedId}
                   handleDeleteAddress={handleDeleteAddress}
                   addressInfo={displayInfo}

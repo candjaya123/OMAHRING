@@ -57,7 +57,7 @@ function BlogPage() {
     return articleList
       .filter(item => item.status === 'published')
       .map(item => ({
-        id: item._id || item.id,
+        id: item.id || item.id,
         title: item.title,
         author: 'Omahring', 
         date: item.created_at,

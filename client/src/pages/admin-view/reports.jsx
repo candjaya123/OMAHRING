@@ -69,7 +69,7 @@ function AdminReportsView() {
 
     const headers = ["ID Pesanan", "Nama Pelanggan", "Tanggal", "Status", "Total (Rp)"];
     const rows = filteredOrders.map(order => [
-      order._id,
+      order.id,
       order.customerName,
       new Date(order.orderDate).toLocaleDateString("id-ID"),
       order.orderStatus,
@@ -145,8 +145,8 @@ function AdminReportsView() {
                 filteredOrders.map((order) => {
                   const statusInfo = getStatusInfo(order.orderStatus);
                   return (
-                    <TableRow key={order._id}>
-                      <TableCell className="font-mono text-xs">{order._id.substring(0, 10)}...</TableCell>
+                    <TableRow key={order.id}>
+                      <TableCell className="font-mono text-xs">{order.id.substring(0, 10)}...</TableCell>
                       <TableCell className="font-medium">{order.customerName}</TableCell>
                       <TableCell>{new Date(order.orderDate).toLocaleDateString("id-ID")}</TableCell>
                       <TableCell><Badge className={`text-white ${statusInfo.color}`}>{statusInfo.text}</Badge></TableCell>

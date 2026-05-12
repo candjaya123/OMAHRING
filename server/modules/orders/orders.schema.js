@@ -9,13 +9,13 @@ const addressSchema = z.object({
 });
 
 const createOrderSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.string(),
   cartId: z.string().uuid(),
   customerName: z.string().min(1),
   email: z.string().email(),
   addressInfo: addressSchema,
   shippingCost: z.number().int().nonnegative().default(0),
-  paymentCategory: z.enum(['bank_transfer', 'minimarket', 'qris', 'ewallet', 'credit_card']).default('qris'),
+  paymentCategory: z.enum(['bank_transfer', 'minimarket', 'qris', 'ewallet', 'credit_card', 'manual']).default('qris'),
   totalAmount: z.number().int().positive(), // Validated on server anyway
 });
 

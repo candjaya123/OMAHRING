@@ -83,8 +83,8 @@ function ShoppingOrders() {
     }
 
     return userOrderList.map((orderItem) => (
-      <TableRow key={orderItem?._id}>
-        <TableCell className="font-medium">{orderItem?._id}</TableCell>
+      <TableRow key={orderItem?.id}>
+        <TableCell className="font-medium">{orderItem?.id}</TableCell>
         <TableCell>{new Date(orderItem?.orderDate).toLocaleDateString()}</TableCell>
         <TableCell>
           <Badge className={`py-1 px-3 text-white ${getOrderStatusStyle(orderItem?.orderStatus)}`}>
@@ -103,14 +103,14 @@ function ShoppingOrders() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleFetchOrderDetails(orderItem?._id)}
+            onClick={() => handleFetchOrderDetails(orderItem?.id)}
           >
             View Details
           </Button>
         </TableCell>
         <TableCell>
           {orderItem?.paymentStatus === 'unpaid' && (
-            <Link to={`/shop/payment-pending/${orderItem?._id}`}>
+            <Link to={`/shop/payment-pending/${orderItem?.id}`}>
               <Button size="sm">Pay Now</Button>
             </Link>
           )}
@@ -145,7 +145,7 @@ function ShoppingOrders() {
 
       {/* Dialog khusus untuk order yang dipilih */}
       <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-        {orderDetails && selectedOrderId === orderDetails?._id && (
+        {orderDetails && selectedOrderId === orderDetails?.id && (
           <ShoppingOrderDetailsView orderDetails={orderDetails} />
         )}
       </Dialog>

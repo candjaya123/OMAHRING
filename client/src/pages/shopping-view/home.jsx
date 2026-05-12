@@ -118,7 +118,7 @@ function ShoppingHome() {
               productList
                 .slice(0, 4)
                 .map((productItem) => (
-                  <motion.div key={productItem._id} variants={itemVariants}>
+                  <motion.div key={productItem.id} variants={itemVariants}>
                     <ShoppingProductTile product={productItem} />
                   </motion.div>
                 ))

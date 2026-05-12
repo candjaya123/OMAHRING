@@ -69,9 +69,9 @@ function AdminOrdersView() {
                   const paymentInfo = getPaymentStatus(order.paymentStatus);
                   const orderInfo = getOrderStatus(order.orderStatus);
                   return (
-                    <TableRow key={order._id}>
+                    <TableRow key={order.id}>
                       <TableCell className="font-mono text-xs">
-                        {order._id.substring(0, 10)}...
+                        {order.id.substring(0, 10)}...
                       </TableCell>
                       <TableCell className="font-medium">{order.customerName || '-'}</TableCell>
                       <TableCell>

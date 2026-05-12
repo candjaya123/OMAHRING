@@ -140,7 +140,7 @@ function AdminArticles() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {articleList && articleList.length > 0
           ? articleList.map((article) => (
-              <div key={article._id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+              <div key={article.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all group">
                 <div className="relative aspect-video overflow-hidden">
                   <img src={article.image || 'https://placehold.co/600x400?text=No+Image'} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt={article.title} />
                   <Badge className={`absolute top-3 left-3 ${article.status === 'published' ? 'bg-green-500' : 'bg-gray-500'} text-white`}>
@@ -159,7 +159,7 @@ function AdminArticles() {
                       variant="outline" 
                       className="flex-1 rounded-lg border-gray-200 hover:bg-orange-50 hover:text-orange-600"
                       onClick={() => {
-                        setCurrentEditedId(article._id);
+                        setCurrentEditedId(article.id);
                         setFormData(article);
                         setMedia({ images: article.image ? [article.image] : [], video: null });
                         setOpenCreateArticleDialog(true);
@@ -170,7 +170,7 @@ function AdminArticles() {
                     <Button 
                       variant="destructive" 
                       className="rounded-lg bg-red-50 hover:bg-red-500 hover:text-white text-red-500 border-none shadow-none"
-                      onClick={() => handleDelete(article._id)}
+                      onClick={() => handleDelete(article.id)}
                     >
                       <Trash className="w-4 h-4" />
                     </Button>

@@ -187,7 +187,7 @@ function AdminProducts() {
 
   const handleEdit = async (product) => {
     setFormData(product);
-    setCurrentEditedId(product._id);
+    setCurrentEditedId(product.id);
     setOpenCreateProductsDialog(true);
   };
 
@@ -223,7 +223,7 @@ function AdminProducts() {
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-8">
           {productList?.map((product) => (
             <AdminProductTile
-                key={product._id}
+                key={product.id}
                 product={product}
                 handleDelete={handleDelete}
                 handleEdit={() => handleEdit(product)}

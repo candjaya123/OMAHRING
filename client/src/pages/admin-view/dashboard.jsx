@@ -225,7 +225,7 @@ function AdminDashboard() {
                         </div>
                         <div className="space-y-4">
                             {recentArticles.length > 0 ? recentArticles.map((article) => (
-                                <div key={article._id} className="flex items-center gap-4 p-3 rounded-xl border border-gray-50 hover:bg-gray-50 transition-colors group cursor-pointer" onClick={() => window.location.href = '/admin/articles'}>
+                                <div key={article.id} className="flex items-center gap-4 p-3 rounded-xl border border-gray-50 hover:bg-gray-50 transition-colors group cursor-pointer" onClick={() => window.location.href = '/admin/articles'}>
                                     <img src={article.image || 'https://placehold.co/100x100?text=News'} className="w-12 h-12 rounded-lg object-cover" alt={article.title} />
                                     <div className="flex-1 overflow-hidden">
                                         <p className="font-bold text-gray-800 text-xs truncate">{article.title}</p>
@@ -260,14 +260,14 @@ function AdminDashboard() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {heroImages.length > 0 ? heroImages.map((img) => (
-                            <div key={img._id} className="group relative rounded-xl overflow-hidden border border-gray-100 shadow-sm h-48">
+                            <div key={img.id} className="group relative rounded-xl overflow-hidden border border-gray-100 shadow-sm h-48">
                                 <img src={img.image} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="Hero" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 flex flex-col justify-end">
                                     <p className="text-white font-bold text-sm truncate">{img.title || "No Title"}</p>
                                     <p className="text-white/70 text-[10px] truncate">{img.subtitle || "No Subtitle"}</p>
                                 </div>
                                 <button 
-                                    onClick={() => handleDeleteFeatureImage(img._id)}
+                                    onClick={() => handleDeleteFeatureImage(img.id)}
                                     className="absolute top-2 right-2 p-2 bg-white/20 backdrop-blur-md hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                     <Trash2 className="w-4 h-4" />
@@ -293,10 +293,10 @@ function AdminDashboard() {
                     
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {showcaseImages.length > 0 ? showcaseImages.map((img) => (
-                            <div key={img._id} className="group relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                            <div key={img.id} className="group relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm">
                                 <img src={img.image} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="Showcase" />
                                 <button 
-                                    onClick={() => handleDeleteFeatureImage(img._id)}
+                                    onClick={() => handleDeleteFeatureImage(img.id)}
                                     className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                     <Trash2 className="w-5 h-5" />

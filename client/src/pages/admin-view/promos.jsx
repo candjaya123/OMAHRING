@@ -142,7 +142,7 @@ function AdminPromosView() {
             <TableBody>
               {promoList && promoList.length > 0 ? (
                 promoList.map((promo) => (
-                  <TableRow key={promo._id}>
+                  <TableRow key={promo.id}>
                     <TableCell className="font-medium">{promo.title}</TableCell>
                     <TableCell><Badge variant="outline">{promo.promoCode}</Badge></TableCell>
                     <TableCell>
@@ -156,7 +156,7 @@ function AdminPromosView() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => { setCurrentPromoId(promo._id); setFormData(promo); setOpenDialog(true); }}>
+                        <Button variant="outline" size="sm" onClick={() => { setCurrentPromoId(promo.id); setFormData(promo); setOpenDialog(true); }}>
                             Edit
                         </Button>
                     </TableCell>

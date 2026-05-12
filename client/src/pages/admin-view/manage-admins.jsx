@@ -80,7 +80,7 @@ function AdminManagementView() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (editingAdmin) {
-      dispatch(editStaff({ id: editingAdmin._id, formData })).then((data) => {
+      dispatch(editStaff({ id: editingAdmin.id, formData })).then((data) => {
         if (data?.payload?.success) {
           dispatch(fetchAllStaff());
           handleCloseDialog();
@@ -149,7 +149,7 @@ function AdminManagementView() {
                   staffList.map((admin) => {
                     const roleInfo = getRoleInfo(admin.role);
                     return (
-                      <TableRow key={admin._id || admin.id || Math.random()}>
+                      <TableRow key={admin.id || admin.id || Math.random()}>
                         <TableCell className="font-medium text-orange-700">{admin.userName || admin.username || '-'}</TableCell>
                         <TableCell>{admin.email || '-'}</TableCell>
                         <TableCell>
@@ -165,7 +165,7 @@ function AdminManagementView() {
                             <Button variant="outline" size="icon" onClick={() => handleOpenDialog(admin)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="icon" onClick={() => handleDelete(admin._id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                            <Button variant="outline" size="icon" onClick={() => handleDelete(admin.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

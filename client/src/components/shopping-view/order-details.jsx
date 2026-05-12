@@ -34,7 +34,7 @@ function ShoppingOrderDetailsView({ orderDetails }) {
       <DialogHeader>
         <DialogTitle>Detail Pesanan</DialogTitle>
         <DialogDescription>
-          Berikut adalah rincian lengkap untuk pesanan #{orderDetails._id.substring(0, 8)}...
+          Berikut adalah rincian lengkap untuk pesanan #{orderDetails.id.substring(0, 8)}...
         </DialogDescription>
       </DialogHeader>
 

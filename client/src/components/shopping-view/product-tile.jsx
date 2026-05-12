@@ -16,7 +16,7 @@ function ShoppingProductTile({ product }) {
 
   return (
     <Card className="w-full max-w-sm mx-auto flex flex-col overflow-hidden rounded-xl border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer group bg-white">
-      <div onClick={() => navigate(`/shop/product/${product._id}`)}>
+      <div onClick={() => navigate(`/shop/product/${product.id}`)}>
         <div className="relative aspect-square overflow-hidden bg-gray-50">
           <img 
             src={mainImage} 
@@ -69,7 +69,7 @@ function ShoppingProductTile({ product }) {
       </div>
       <CardFooter className="p-3 bg-white mt-auto">
         <Button
-          onClick={() => navigate(`/shop/product/${product._id}`)}
+          onClick={() => navigate(`/shop/product/${product.id}`)}
           className="w-full bg-orange-500 hover:bg-orange-600 h-9 rounded-md text-xs font-semibold shadow-sm transition-colors"
           disabled={isOutOfStock}
         >

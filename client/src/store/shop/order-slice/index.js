@@ -201,11 +201,11 @@ const orderSlice = createSlice({
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
         state.isLoading = false;
         const updatedOrder = action.payload.data;
-        const index = state.adminOrderList.findIndex((order) => order._id === updatedOrder._id);
+        const index = state.adminOrderList.findIndex((order) => order.id === updatedOrder.id);
         if (index !== -1) {
           state.adminOrderList[index] = updatedOrder;
         }
-        if (state.orderDetails?._id === updatedOrder._id) {
+        if (state.orderDetails?.id === updatedOrder.id) {
           state.orderDetails = updatedOrder;
         }
       })

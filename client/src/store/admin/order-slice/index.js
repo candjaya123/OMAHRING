@@ -68,7 +68,7 @@ const adminOrderSlice = createSlice({
         state.isLoading = false;
         const updatedOrder = action.payload.data;
         state.orderList = state.orderList.map((order) => {
-          if (String(order._id) === String(updatedOrder._id)) {
+          if (String(order.id) === String(updatedOrder.id)) {
             return updatedOrder;
           }
           return order;
